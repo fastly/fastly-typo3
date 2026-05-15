@@ -1,0 +1,7 @@
+.Build/
+.idea/
+composer.lock
+.phpunit.result.cache
+packages
+tasks
+var

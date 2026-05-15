@@ -1,0 +1,71 @@
+{
+    "name": "fastly/typo3",
+    "description": "Fastly's edge cdn and Image Optimize integration for TYPO3 CMS",
+    "license": "MIT",
+    "type": "typo3-cms-extension",
+    "keywords": [
+        "cdn",
+        "caching",
+        "varnish",
+        "images",
+        "compression",
+        "performance",
+        "webvitals"
+    ],
+    "authors": [
+        {
+            "name": "Sascha Nowak",
+            "email": "sascha.nowak@fastly.com"
+        }
+    ],
+    "require": {
+        "typo3/cms-core": "^13.4 || ^14.3",
+        "fastly/fastly": "^13.1"
+    },
+    "require-dev": {
+        "ext-sqlite3": "*",
+        "ergebnis/composer-normalize": "^2.51",
+        "phpunit/phpcov": "^11.0",
+        "ssch/typo3-rector": "^3.14",
+        "typo3/testing-framework": "^9.5"
+    },
+    "config": {
+        "allow-plugins": {
+            "ergebnis/composer-normalize": true,
+            "typo3/class-alias-loader": true,
+            "typo3/cms-composer-installers": true
+        },
+        "bin-dir": ".Build/bin",
+        "vendor-dir": ".Build/vendor"
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "fastly",
+            "web-dir": ".Build/public"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Fastly\\Cdn\\": "Classes/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fastly\\Cdn\\Tests\\": "Tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "@prepare-extension-test-structure"
+        ],
+        "composer:normalize": "@composer normalize --no-check-lock --dry-run",
+        "composer:normalize:fix": "@composer normalize --no-check-lock",
+        "composer:psr-verify": "@composer dumpautoload --optimize --strict-psr --no-plugins",
+        "php:lint": "find Classes -name '*.php' -print0 | xargs -r -0 -n 1 -P 4 php -l",
+        "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G",
+        "rector:dry": "rector process --dry-run",
+        "rector": "rector process",
+        "test:functional": "phpunit -c phpunit_functional.xml",
+        "test:unit": "phpunit -c phpunit.xml"
+    }
+}

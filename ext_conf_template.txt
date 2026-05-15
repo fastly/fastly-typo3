@@ -1,0 +1,16 @@
+# cat=Fastly/; type=string; label=Service ID: Alphanumeric string identifying your Fastly service
+serviceId =
+# cat=Fastly/; type=string; label=API Token: Fastly API token for cache purge operations
+apiToken =
+# cat=Fastly/; type=string; label=Asset base URL: Base URL prepended to relative source file URLs (e.g. https://cdn.example.com)
+assetUrl = _images/
+# cat=Fastly/; type=boolean; label=imgproxy url
+enableImageOptimizer = true
+# cat=Fastly/; type=boolean; label=imgproxy url
+enableCdn = true
+# cat=Fastly/; type=string; label=Format quality: Overrides GFX/jpg_quality. See https://www.fastly.com/documentation/reference/io/quality/
+quality = 85,75
+# cat=Fastly/; type=string; label=Allowed file extensions
+allowedExtensions = jpg,jpeg,webp,avif,png,tiff
+# cat=Fastly/; type=boolean; label=Ignore assets
+ignoreAssets = false
