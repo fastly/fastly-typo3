@@ -1,0 +1,97 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Fastly\Cdn\Tests\Unit\Cache\Backend;
+
+use Fastly\Cdn\Api\FastlyClient;
+use Fastly\Cdn\Cache\Backend\FastlyBackend;
+use Fastly\Cdn\Service\FlushService;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Response;
+use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
+
+/**
+ * FastlyBackend delegates to FlushService via GeneralUtility::makeInstance().
+ * Both FastlyBackend and FlushService are final readonly, so we register a real
+ * FlushService (backed by a GuzzleHttp MockHandler) via setSingletonInstance() and
+ * verify behaviour by inspecting the captured HTTP request history stored in a
+ * class property (avoids PHP reference issues when returning from helper methods).
+ */
+final class FastlyBackendTest extends UnitTestCase
+{
+    // UnitTestCase integrity check requires this when tests register singletons.
+    protected bool $resetSingletonInstances = true;
+
+    private array $requestHistory = [];
+
+    private function createBackend(int $responseCount = 10): FastlyBackend
+    {
+        $this->requestHistory = [];
+        $responses = array_fill(0, $responseCount, new Response(200, [], '{"status":"ok"}'));
+        $mock = new MockHandler($responses);
+        $stack = HandlerStack::create($mock);
+        $stack->push(Middleware::history($this->requestHistory));
+        $fastlyClient = new FastlyClient(
+            new Client(['handler' => $stack]),
+            'API_TOKEN_PLACEHOLDER',
+            'SVC_ID_PLACEHOLDER',
+        );
+        $flushService = new FlushService(
+            $fastlyClient,
+            $this->createMock(LoggerInterface::class),
+            true,
+        );
+        // FlushService implements SingletonInterface; setSingletonInstance() registers it
+        // so that FastlyBackend::__construct() receives this instance via makeInstance().
+        GeneralUtility::setSingletonInstance(FlushService::class, $flushService);
+
+        return new FastlyBackend();
+    }
+
+    public function testFlushDelegatesFlushAll(): void
+    {
+        $backend = $this->createBackend();
+        $backend->flush();
+
+        self::assertCount(1, $this->requestHistory);
+        self::assertStringContainsString('purge_all', (string) $this->requestHistory[0]['request']->getUri());
+    }
+
+    public function testFlushByTagDelegatesBanTag(): void
+    {
+        $backend = $this->createBackend();
+        $backend->flushByTag('my-tag');
+
+        self::assertCount(1, $this->requestHistory);
+        self::assertStringContainsString('my-tag', (string) $this->requestHistory[0]['request']->getUri());
+    }
+
+    public function testFlushByTagsCallsBanTagForEachTag(): void
+    {
+        $backend = $this->createBackend();
+        $backend->flushByTags(['alpha', 'beta', 'gamma']);
+
+        self::assertCount(3, $this->requestHistory);
+        $uris = array_map(
+            static fn (array $e): string => (string) $e['request']->getUri(),
+            $this->requestHistory,
+        );
+        self::assertStringContainsString('alpha', implode(' ', $uris));
+        self::assertStringContainsString('beta', implode(' ', $uris));
+        self::assertStringContainsString('gamma', implode(' ', $uris));
+    }
+
+    public function testFlushByTagsWithEmptyArrayMakesNoRequests(): void
+    {
+        $backend = $this->createBackend(0);
+        $backend->flushByTags([]);
+
+        self::assertCount(0, $this->requestHistory);
+    }
+}
