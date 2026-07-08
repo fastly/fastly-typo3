@@ -109,6 +109,15 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
         return $this->versionApi->activateServiceVersion(['service_id' => $serviceId, 'version_id' => $version]);
     }
 
+    public function updateServiceVersionComment(string $serviceId, int $version, string $comment): VersionResponse
+    {
+        return $this->versionApi->updateServiceVersion([
+            'service_id' => $serviceId,
+            'version_id' => $version,
+            'comment' => $comment,
+        ]);
+    }
+
     /**
      * @return DomainResponse[]
      */

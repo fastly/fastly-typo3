@@ -34,6 +34,8 @@ interface FastlyClientInterface
 
     public function activateServiceVersion(string $serviceId, int $version): VersionResponse;
 
+    public function updateServiceVersionComment(string $serviceId, int $version, string $comment): VersionResponse;
+
     /**
      * @return DomainResponse[]
      */

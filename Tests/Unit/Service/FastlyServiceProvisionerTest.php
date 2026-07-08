@@ -76,6 +76,11 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
             ->with('svc', 2)
             ->willReturn(new Version(['number' => 4]));
 
+        // The clone must be tagged so a later run can recognise and reuse it.
+        $client->expects(self::once())->method('updateServiceVersionComment')
+            ->with('svc', 4, FastlyServiceProvisioner::MANAGED_VERSION_COMMENT)
+            ->willReturn(new VersionResponse(['number' => 4]));
+
         $createdOnVersion = null;
         $client->expects(self::once())->method('createDomain')
             ->willReturnCallback(function (string $s, int $v, string $d) use (&$createdOnVersion): DomainResponse {
@@ -96,6 +101,72 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         self::assertTrue($result['cloned']);
         self::assertSame(4, $createdOnVersion, 'domain must be created on the cloned version');
         self::assertSame(4, $activatedVersion, 'the cloned version must be the one activated');
+    }
+
+    /**
+     * I1: a draft this extension previously cloned (identified by its comment
+     * marker) is reused instead of cloning again, so repeated updates — notably
+     * under --no-activate — do not pile up new draft versions.
+     */
+    public function testUpdateReusesManagedDraftInsteadOfCloning(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 2, 'active' => true, 'locked' => true],
+            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => FastlyServiceProvisioner::MANAGED_VERSION_COMMENT],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains([]));
+        $client->method('getHttp3')->willThrowException($this->notFound());
+        $client->method('getBotManagement')->willThrowException($this->notFound());
+        $client->method('getNgwaf')->willThrowException($this->notFound());
+        $client->method('getDdosProtection')->willThrowException($this->notFound());
+
+        $client->expects(self::never())->method('cloneServiceVersion');
+        $createdOnVersion = null;
+        $client->expects(self::once())->method('createDomain')
+            ->willReturnCallback(function (string $s, int $v, string $d) use (&$createdOnVersion): DomainResponse {
+                $createdOnVersion = $v;
+                return new DomainResponse(['name' => $d]);
+            });
+
+        $result = (new FastlyServiceProvisioner($client))->updateService('svc', ['example.com'], [], true);
+
+        self::assertSame(3, $result['version']);
+        self::assertFalse($result['cloned']);
+        self::assertSame(3, $createdOnVersion, 'the missing domain must be added to the reused managed draft');
+    }
+
+    /**
+     * I1: when the managed draft already carries the desired domains, a repeated
+     * update makes no write calls at all — no new clone, no domain creation, no
+     * activation.
+     */
+    public function testUpdateMakesNoWritesWhenManagedDraftAlreadyMatches(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 2, 'active' => true, 'locked' => true],
+            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => FastlyServiceProvisioner::MANAGED_VERSION_COMMENT],
+        ]));
+        // Active version (2) still lacks the domain; the managed draft (3) already has it.
+        $client->method('listDomains')->willReturnCallback(
+            fn (string $s, int $v): array => $v === 3 ? $this->domains(['example.com']) : $this->domains([]),
+        );
+        $client->method('getHttp3')->willThrowException($this->notFound());
+        $client->method('getBotManagement')->willThrowException($this->notFound());
+        $client->method('getNgwaf')->willThrowException($this->notFound());
+        $client->method('getDdosProtection')->willThrowException($this->notFound());
+
+        $client->expects(self::never())->method('cloneServiceVersion');
+        $client->expects(self::never())->method('createDomain');
+        $client->expects(self::never())->method('activateServiceVersion');
+
+        $result = (new FastlyServiceProvisioner($client))->updateService('svc', ['example.com'], [], true);
+
+        self::assertSame(3, $result['version']);
+        self::assertFalse($result['cloned']);
+        self::assertSame([], $result['addedDomains']);
+        self::assertFalse($result['activated']);
     }
 
     public function testAddServiceDryRunReportsPlannedChangesWithoutApiWrites(): void

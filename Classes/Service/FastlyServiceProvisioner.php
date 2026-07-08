@@ -18,6 +18,14 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
     public const FEATURE_DDOS_PROTECTION = 'ddosProtection';
 
     /**
+     * Marker written to the comment of versions this extension clones for an
+     * update. Only versions carrying this marker are reused on a later run, so
+     * an update stays idempotent (no draft sprawl under --no-activate) without
+     * ever reusing an unrelated draft created outside the extension.
+     */
+    public const MANAGED_VERSION_COMMENT = 'Draft managed by the TYPO3 Fastly extension.';
+
+    /**
      * Client-error codes returned when a product/feature is not enabled on a
      * service. Fastly's enablement API is not pinned to a single code across
      * products (unverified contract: docs do not document the not-enabled
@@ -116,8 +124,13 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
         }
 
         if ($needsVersion) {
-            $targetVersion = $this->editableVersionForUpdate($serviceId, (int)$status['activeVersion']);
-            $cloned = $targetVersion !== (int)$status['activeVersion'];
+            $managedDraft = $this->findManagedDraft($serviceId);
+            if ($managedDraft !== null) {
+                $targetVersion = $managedDraft;
+            } else {
+                $targetVersion = $this->cloneManagedVersion($serviceId, (int)$status['activeVersion']);
+                $cloned = true;
+            }
         }
 
         $addedDomains = $needsVersion ? $this->addMissingDomains($serviceId, $targetVersion, $domains) : [];
@@ -275,13 +288,39 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
     }
 
     /**
-     * Always clone the active version to obtain a known-clean draft. Reusing an
-     * arbitrary pre-existing inactive/unlocked version risks publishing unrelated
-     * staged configuration when the version is activated.
+     * The highest-numbered inactive, unlocked version this extension previously
+     * created (recognised by its comment marker), or null if there is none.
+     * Only our own drafts are reused; an unrelated draft left by another tool or
+     * a UI user is never touched, so its staged config cannot be published.
      */
-    private function editableVersionForUpdate(string $serviceId, int $activeVersion): int
+    private function findManagedDraft(string $serviceId): ?int
     {
-        return (int)$this->client->cloneServiceVersion($serviceId, $activeVersion)->getNumber();
+        $managed = null;
+        foreach ($this->client->listServiceVersions($serviceId) as $version) {
+            if ((bool)$version->getActive() === false
+                && (bool)$version->getLocked() === false
+                && (string)$version->getComment() === self::MANAGED_VERSION_COMMENT
+            ) {
+                $number = (int)$version->getNumber();
+                if ($managed === null || $number > $managed) {
+                    $managed = $number;
+                }
+            }
+        }
+
+        return $managed;
+    }
+
+    /**
+     * Clone the active version to obtain a known-clean draft and tag it so a
+     * later run can recognise and reuse it instead of cloning again.
+     */
+    private function cloneManagedVersion(string $serviceId, int $activeVersion): int
+    {
+        $version = (int)$this->client->cloneServiceVersion($serviceId, $activeVersion)->getNumber();
+        $this->client->updateServiceVersionComment($serviceId, $version, self::MANAGED_VERSION_COMMENT);
+
+        return $version;
     }
 
     /**
