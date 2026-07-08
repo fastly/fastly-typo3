@@ -10,6 +10,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\LoggerInterface;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -60,6 +61,43 @@ final class FlushServiceTest extends UnitTestCase
 
         $service = new FlushService($this->createFastlyClient($mock), $logger, true);
         $service->banTag('my-tag');
+    }
+
+    /**
+     * ExtensionConfiguration returns string values, so a disabled toggle arrives
+     * as "0" / "false" rather than the boolean false. The old `=== false` check
+     * never matched those and left the CDN enabled — this pins the fix.
+     *
+     */
+    #[DataProvider('disabledStringValues')]
+    public function testBanTagTreatsStringConfigAsDisabled(string $value): void
+    {
+        $mock = new MockHandler([]);
+        $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), $value);
+        $service->banTag('some-tag');
+
+        self::assertSame(0, $mock->count(), 'No HTTP request should be made when CDN is disabled via string config');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function disabledStringValues(): array
+    {
+        return [
+            'string zero' => ['0'],
+            'string false' => ['false'],
+            'empty string' => [''],
+        ];
+    }
+
+    public function testBanTagTreatsStringOneAsEnabled(): void
+    {
+        $mock = new MockHandler([new Response(200, [], '{"status":"ok"}')]);
+        $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), '1');
+        $service->banTag('some-tag');
+
+        self::assertSame(0, $mock->count(), 'A request should be made when CDN is enabled via string config');
     }
 
     public function testFlushAllCallsPurgeAllWhenCdnEnabled(): void

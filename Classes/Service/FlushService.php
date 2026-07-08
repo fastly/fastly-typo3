@@ -16,13 +16,13 @@ final readonly class FlushService implements SingletonInterface
         protected FastlyClient $client,
         protected LoggerInterface $logger,
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "enableCdn")')]
-        private bool $enableCdn = true,
+        private bool|string $enableCdn = true,
     ) {
     }
 
     public function banTag(string $tag): void
     {
-        if ($this->enableCdn === false) {
+        if (!$this->isCdnEnabled()) {
             return;
         }
 
@@ -35,7 +35,7 @@ final readonly class FlushService implements SingletonInterface
 
     public function flushAll(): void
     {
-        if ($this->enableCdn === false) {
+        if (!$this->isCdnEnabled()) {
             return;
         }
 
@@ -44,5 +44,10 @@ final readonly class FlushService implements SingletonInterface
         } catch (ApiException $e) {
             $this->logger->error('failed purging all Fastly caches', ['exception' => $e]);
         }
+    }
+
+    private function isCdnEnabled(): bool
+    {
+        return filter_var($this->enableCdn, FILTER_VALIDATE_BOOL);
     }
 }
