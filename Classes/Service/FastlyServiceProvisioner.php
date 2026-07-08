@@ -17,6 +17,15 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
     public const FEATURE_NGWAF = 'ngwaf';
     public const FEATURE_DDOS_PROTECTION = 'ddosProtection';
 
+    /**
+     * Client-error codes returned when a product/feature is not enabled on a
+     * service. Fastly's enablement API is not pinned to a single code across
+     * products (unverified contract: docs do not document the not-enabled
+     * response), so all of these are treated as "disabled". Other codes
+     * (401 auth, 429 rate limit, 5xx) are propagated as genuine failures.
+     */
+    private const NOT_ENABLED_STATUS_CODES = [400, 403, 404];
+
     public function __construct(private FastlyClientInterface $client)
     {
     }
@@ -227,24 +236,21 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
 
     private function isHttp3Enabled(string $serviceId, int $version): bool
     {
-        try {
-            $this->client->getHttp3($serviceId, $version);
-            return true;
-        } catch (ApiException $e) {
-            if ($e->getCode() === 404) {
-                return false;
-            }
-            throw $e;
-        }
+        return $this->isEnabled(fn () => $this->client->getHttp3($serviceId, $version));
     }
 
     private function isProductEnabled(\Closure $getter): bool
+    {
+        return $this->isEnabled($getter);
+    }
+
+    private function isEnabled(\Closure $getter): bool
     {
         try {
             $getter();
             return true;
         } catch (ApiException $e) {
-            if ($e->getCode() === 404) {
+            if (in_array($e->getCode(), self::NOT_ENABLED_STATUS_CODES, true)) {
                 return false;
             }
             throw $e;

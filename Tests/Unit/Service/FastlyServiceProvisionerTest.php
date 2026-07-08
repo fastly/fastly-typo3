@@ -12,6 +12,7 @@ use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -195,6 +196,57 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         self::assertTrue($status['features'][FastlyServiceProvisioner::FEATURE_HTTP3]);
         self::assertTrue($status['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
         self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_NGWAF]);
+    }
+
+    /**
+     * The Fastly enablement contract for a not-enabled product is not pinned to a
+     * single status code, so any client-side "not enabled" signal must be read as
+     * disabled rather than propagated as a check failure.
+     */
+    #[DataProvider('productDisabledStatusCodes')]
+    public function testCheckServiceTreatsProductClientErrorsAsDisabled(int $statusCode): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 1, 'active' => true, 'locked' => true],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains([]));
+        $client->method('getHttp3')->willThrowException(new ApiException('not enabled', $statusCode));
+        $client->method('getBotManagement')->willThrowException(new ApiException('not enabled', $statusCode));
+        $client->method('getNgwaf')->willThrowException(new ApiException('not enabled', $statusCode));
+        $client->method('getDdosProtection')->willThrowException(new ApiException('not enabled', $statusCode));
+
+        $status = (new FastlyServiceProvisioner($client))->checkService('svc', []);
+
+        self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_HTTP3]);
+        self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
+        self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_NGWAF]);
+        self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_DDOS_PROTECTION]);
+    }
+
+    /**
+     * @return array<string, array{int}>
+     */
+    public static function productDisabledStatusCodes(): array
+    {
+        return [
+            '400 Bad Request' => [400],
+            '403 Forbidden' => [403],
+            '404 Not Found' => [404],
+        ];
+    }
+
+    public function testCheckServicePropagatesUnexpectedApiErrors(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 1, 'active' => true, 'locked' => true],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains([]));
+        $client->method('getHttp3')->willThrowException(new ApiException('server error', 500));
+
+        $this->expectException(ApiException::class);
+        (new FastlyServiceProvisioner($client))->checkService('svc', []);
     }
 
     public function testUpdateReportsAlreadyActiveFeatureWithoutReEnabling(): void
