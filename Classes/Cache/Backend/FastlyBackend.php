@@ -25,13 +25,11 @@ final class FastlyBackend extends NullBackend
 
     public function flushByTags(array $tags): void
     {
-        foreach ($tags as $tag) {
-            $this->flushByTag($tag);
-        }
+        $this->flushService->purgeTags($tags);
     }
 
     public function flushByTag(string $tag): void
     {
-        $this->flushService->banTag($tag);
+        $this->flushService->purgeTag($tag);
     }
 }

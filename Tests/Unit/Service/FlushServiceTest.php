@@ -35,7 +35,7 @@ final class FlushServiceTest extends UnitTestCase
     {
         $mock = new MockHandler([new Response(200, [], '{"status":"ok"}')]);
         $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), true);
-        $service->banTag('some-tag');
+        $service->purgeTag('some-tag');
 
         self::assertSame(0, $mock->count(), 'MockHandler should have been consumed once');
     }
@@ -44,7 +44,7 @@ final class FlushServiceTest extends UnitTestCase
     {
         $mock = new MockHandler([]);
         $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), false);
-        $service->banTag('some-tag');
+        $service->purgeTag('some-tag');
 
         self::assertSame(0, $mock->count(), 'No HTTP request should be made when CDN is disabled');
     }
@@ -60,7 +60,7 @@ final class FlushServiceTest extends UnitTestCase
         );
 
         $service = new FlushService($this->createFastlyClient($mock), $logger, true);
-        $service->banTag('my-tag');
+        $service->purgeTag('my-tag');
     }
 
     /**
@@ -74,7 +74,7 @@ final class FlushServiceTest extends UnitTestCase
     {
         $mock = new MockHandler([]);
         $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), $value);
-        $service->banTag('some-tag');
+        $service->purgeTag('some-tag');
 
         self::assertSame(0, $mock->count(), 'No HTTP request should be made when CDN is disabled via string config');
     }
@@ -95,7 +95,7 @@ final class FlushServiceTest extends UnitTestCase
     {
         $mock = new MockHandler([new Response(200, [], '{"status":"ok"}')]);
         $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), '1');
-        $service->banTag('some-tag');
+        $service->purgeTag('some-tag');
 
         self::assertSame(0, $mock->count(), 'A request should be made when CDN is enabled via string config');
     }
@@ -141,7 +141,7 @@ final class FlushServiceTest extends UnitTestCase
         $logger->expects(self::never())->method('error');
 
         $service = new FlushService($this->createFastlyClient($mock), $logger, true);
-        $service->banTag('tag-1');
+        $service->purgeTag('tag-1');
         $service->flushAll();
     }
 }

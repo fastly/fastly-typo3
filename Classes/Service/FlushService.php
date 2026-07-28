@@ -20,7 +20,7 @@ final readonly class FlushService implements SingletonInterface
     ) {
     }
 
-    public function banTag(string $tag): void
+    public function purgeTag(string $tag): void
     {
         if (!$this->isCdnEnabled()) {
             return;
@@ -30,6 +30,26 @@ final readonly class FlushService implements SingletonInterface
             $this->client->purgeByTag($tag);
         } catch (ApiException $e) {
             $this->logger->error('failed purging Fastly cache by tag', ['exception' => $e, 'tag' => $tag]);
+        }
+    }
+
+    public function purgeTags(array $tags): void
+    {
+        if (!$this->isCdnEnabled()) {
+            return;
+        }
+
+        try {
+            if (count($tags) < 10) {
+                foreach ($tags as $tag) {
+                    $this->purgeTag($tag);
+                }
+                return;
+            }
+
+            $this->client->purgeByTags($tags);
+        } catch (ApiException $e) {
+            $this->logger->error('failed purging Fastly cache by tag', ['exception' => $e, 'tags' => $tags]);
         }
     }
 
