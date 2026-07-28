@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Processor;
 
 use Fastly\Cdn\Service\UrlBuilder;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use TYPO3\CMS\Core\Imaging\ImageDimension;
 use TYPO3\CMS\Core\Imaging\ImageManipulation\Area;
@@ -13,6 +14,7 @@ use TYPO3\CMS\Core\Resource\Processing\ProcessorInterface;
 use TYPO3\CMS\Core\Resource\Processing\TaskInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+#[Autoconfigure(public: true)]
 final readonly class ImageOptimizerProcessor implements ProcessorInterface
 {
     public function __construct(

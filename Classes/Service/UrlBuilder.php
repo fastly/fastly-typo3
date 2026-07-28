@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Service;
 
+use TYPO3\CMS\Core\Http\Uri;
+
 final class UrlBuilder
 {
     protected string $sourceUrl = '';
@@ -86,12 +88,12 @@ final class UrlBuilder
 
     public function generate(): string
     {
-        $path = parse_url($this->sourceUrl, PHP_URL_PATH) ?? '';
-        $params = $this->parameter;
-
-        if (!isset($params['format'])) {
-            $params['format'] = 'auto';
+        $uri = new Uri($this->sourceUrl);
+        $assetHost = new Uri($this->assetUrl)->getHost();
+        if ($assetHost) {
+            $uri = $uri->withHost($assetHost);
         }
+        $params = $this->parameter;
 
         if ($this->resizeType !== null) {
             $params['fit'] = 'crop';
@@ -102,6 +104,7 @@ final class UrlBuilder
             $params['fit'] = 'bounds';
         }
 
-        return $path . '?' . http_build_query($params);
+        $uri = $uri->withQuery(http_build_query($params));
+        return (string) $uri;
     }
 }
