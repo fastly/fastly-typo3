@@ -9,8 +9,11 @@ use TYPO3\CMS\Core\Http\Uri;
 final class UrlBuilder
 {
     protected string $sourceUrl = '';
+
     protected array $parameter = [];
+
     protected bool $upscaling = false;
+
     protected ?string $resizeType = null;
 
     public function __construct(
@@ -42,7 +45,7 @@ final class UrlBuilder
      */
     public function setCrop(float $width, float $height, float $offsetX, float $offsetY): self
     {
-        $this->parameter['precrop'] = "{$width},{$height},x{$offsetX},y{$offsetY}";
+        $this->parameter['precrop'] = sprintf('%s,%s,x%s,y%s', $width, $height, $offsetX, $offsetY);
         return $this;
     }
 
@@ -90,9 +93,10 @@ final class UrlBuilder
     {
         $uri = new Uri($this->sourceUrl);
         $assetHost = new Uri($this->assetUrl)->getHost();
-        if ($assetHost) {
+        if ($assetHost !== '' && $assetHost !== '0') {
             $uri = $uri->withHost($assetHost);
         }
+
         $params = $this->parameter;
 
         if ($this->resizeType !== null) {

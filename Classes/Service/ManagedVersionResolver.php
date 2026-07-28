@@ -24,7 +24,7 @@ final readonly class ManagedVersionResolver implements SingletonInterface
      * Marker written to the comment of versions this extension clones for a
      * write. Only versions carrying this marker are reused on a later run.
      */
-    public const MANAGED_VERSION_COMMENT = 'Draft managed by the TYPO3 Fastly extension.';
+    public const string MANAGED_VERSION_COMMENT = 'Draft managed by the TYPO3 Fastly extension.';
 
     public function __construct(private FastlyClientInterface $client)
     {
@@ -40,7 +40,7 @@ final readonly class ManagedVersionResolver implements SingletonInterface
         }
 
         $latest = $this->latestVersion($versions);
-        return $latest === null ? 1 : (int)$latest->getNumber();
+        return $latest instanceof SchemasVersionResponse ? (int)$latest->getNumber() : 1;
     }
 
     public function resolveEditableVersion(string $serviceId): int
@@ -53,7 +53,7 @@ final readonly class ManagedVersionResolver implements SingletonInterface
         }
 
         $latest = $this->latestVersion($versions);
-        return $latest === null ? 1 : (int)$latest->getNumber();
+        return $latest instanceof SchemasVersionResponse ? (int)$latest->getNumber() : 1;
     }
 
     /**

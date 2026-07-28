@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Service;
 
+use Closure;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Model\DomainResponse;
@@ -11,10 +12,13 @@ use TYPO3\CMS\Core\SingletonInterface;
 
 final readonly class FastlyServiceProvisioner implements SingletonInterface
 {
-    public const FEATURE_HTTP3 = 'http3';
-    public const FEATURE_BOT_MANAGEMENT = 'botManagement';
-    public const FEATURE_NGWAF = 'ngwaf';
-    public const FEATURE_DDOS_PROTECTION = 'ddosProtection';
+    public const string FEATURE_HTTP3 = 'http3';
+
+    public const string FEATURE_BOT_MANAGEMENT = 'botManagement';
+
+    public const string FEATURE_NGWAF = 'ngwaf';
+
+    public const string FEATURE_DDOS_PROTECTION = 'ddosProtection';
 
     /**
      * Client-error codes returned when a product/feature is not enabled on a
@@ -23,7 +27,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
      * response), so all of these are treated as "disabled". Other codes
      * (401 auth, 429 rate limit, 5xx) are propagated as genuine failures.
      */
-    private const NOT_ENABLED_STATUS_CODES = [400, 403, 404];
+    private const array NOT_ENABLED_STATUS_CODES = [400, 403, 404];
 
     public function __construct(
         private FastlyClientInterface $client,
@@ -161,9 +165,9 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
             'unknownDomains' => array_values(array_diff($serviceDomains, array_keys($configuredLookup))),
             'features' => [
                 self::FEATURE_HTTP3 => $this->isHttp3Enabled($serviceId, $activeVersion),
-                self::FEATURE_BOT_MANAGEMENT => $this->isProductEnabled(fn () => $this->client->getBotManagement($serviceId)),
-                self::FEATURE_NGWAF => $this->isProductEnabled(fn () => $this->client->getNgwaf($serviceId)),
-                self::FEATURE_DDOS_PROTECTION => $this->isProductEnabled(fn () => $this->client->getDdosProtection($serviceId)),
+                self::FEATURE_BOT_MANAGEMENT => $this->isProductEnabled(fn (): object => $this->client->getBotManagement($serviceId)),
+                self::FEATURE_NGWAF => $this->isProductEnabled(fn (): object => $this->client->getNgwaf($serviceId)),
+                self::FEATURE_DDOS_PROTECTION => $this->isProductEnabled(fn (): object => $this->client->getDdosProtection($serviceId)),
             ],
         ];
     }
@@ -180,6 +184,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
             if (isset($existing[$domain])) {
                 continue;
             }
+
             $this->client->createDomain($serviceId, $version, $domain);
             $added[] = $domain;
         }
@@ -204,18 +209,21 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
                 $changes[self::FEATURE_HTTP3] = 'enabled';
             }
         }
+
         if ($features[self::FEATURE_BOT_MANAGEMENT] ?? false) {
             $changes[self::FEATURE_BOT_MANAGEMENT] = $this->enableProduct(
                 $currentStatus[self::FEATURE_BOT_MANAGEMENT] ?? null,
                 fn () => $this->client->enableBotManagement($serviceId),
             );
         }
+
         if ($features[self::FEATURE_NGWAF] ?? false) {
             $changes[self::FEATURE_NGWAF] = $this->enableProduct(
                 $currentStatus[self::FEATURE_NGWAF] ?? null,
                 fn () => $this->client->enableNgwaf($serviceId),
             );
         }
+
         if ($features[self::FEATURE_DDOS_PROTECTION] ?? false) {
             $changes[self::FEATURE_DDOS_PROTECTION] = $this->enableProduct(
                 $currentStatus[self::FEATURE_DDOS_PROTECTION] ?? null,
@@ -226,7 +234,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
         return $changes;
     }
 
-    private function enableProduct(?bool $currentStatus, \Closure $enable): string
+    private function enableProduct(?bool $currentStatus, Closure $enable): string
     {
         if ($currentStatus === true) {
             return 'already active';
@@ -238,24 +246,25 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
 
     private function isHttp3Enabled(string $serviceId, int $version): bool
     {
-        return $this->isEnabled(fn () => $this->client->getHttp3($serviceId, $version));
+        return $this->isEnabled(fn (): object => $this->client->getHttp3($serviceId, $version));
     }
 
-    private function isProductEnabled(\Closure $getter): bool
+    private function isProductEnabled(Closure $getter): bool
     {
         return $this->isEnabled($getter);
     }
 
-    private function isEnabled(\Closure $getter): bool
+    private function isEnabled(Closure $getter): bool
     {
         try {
             $getter();
             return true;
-        } catch (ApiException $e) {
-            if (in_array($e->getCode(), self::NOT_ENABLED_STATUS_CODES, true)) {
+        } catch (ApiException $apiException) {
+            if (in_array($apiException->getCode(), self::NOT_ENABLED_STATUS_CODES, true)) {
                 return false;
             }
-            throw $e;
+
+            throw $apiException;
         }
     }
 
@@ -272,6 +281,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
                 $names[$name] = $name;
             }
         }
+
         ksort($names);
         return array_values($names);
     }
@@ -288,6 +298,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
             if (!$enabled) {
                 continue;
             }
+
             $planned[$feature] = ($currentStatus[$feature] ?? false) ? 'already active' : 'would enable';
         }
 

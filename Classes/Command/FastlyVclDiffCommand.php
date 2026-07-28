@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Command;
 
+use Throwable;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Service\VclProvisioner;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -41,8 +42,8 @@ final class FastlyVclDiffCommand extends Command
 
         try {
             $diff = $this->provisioner->diff($serviceId);
-        } catch (\Throwable $e) {
-            $io->error('Fastly API request failed: ' . $e->getMessage());
+        } catch (Throwable $throwable) {
+            $io->error('Fastly API request failed: ' . $throwable->getMessage());
             return Command::FAILURE;
         }
 
@@ -65,9 +66,11 @@ final class FastlyVclDiffCommand extends Command
         foreach ($diff['created'] as $name) {
             $rows[] = [(string)$name, 'create'];
         }
+
         foreach ($diff['updated'] as $name) {
             $rows[] = [(string)$name, 'update'];
         }
+
         foreach ($diff['unchanged'] as $name) {
             $rows[] = [(string)$name, 'unchanged'];
         }

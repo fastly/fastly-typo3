@@ -68,9 +68,11 @@ final readonly class VclProvisioner implements SingletonInterface
                     $name === VclFileResolver::MAIN_NAME,
                 );
             }
+
             foreach ($updated as $name) {
                 $this->client->updateCustomVcl($serviceId, $targetVersion, $name, $local[$name]);
             }
+
             if (in_array(VclFileResolver::MAIN_NAME, $created, true)) {
                 $this->client->setCustomVclMain($serviceId, $targetVersion, VclFileResolver::MAIN_NAME);
             }
@@ -137,11 +139,12 @@ final readonly class VclProvisioner implements SingletonInterface
     {
         try {
             return $this->client->getCustomVclRaw($serviceId, $version, $name);
-        } catch (ApiException $e) {
-            if ($e->getCode() === 404) {
+        } catch (ApiException $apiException) {
+            if ($apiException->getCode() === 404) {
                 return null;
             }
-            throw $e;
+
+            throw $apiException;
         }
     }
 

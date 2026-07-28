@@ -80,7 +80,7 @@ class EsiViewHelper extends AbstractTagBasedViewHelper
             [],
         );
 
-        $this->registerArgument('src', 'string', '', false, null);
+        $this->registerArgument('src', 'string', '', false);
     }
 
     #[Override]

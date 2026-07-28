@@ -24,7 +24,7 @@ final readonly class VclFileResolver implements SingletonInterface
      * Name (without extension) of the file that must be flagged as the Fastly
      * "main" VCL. Every other file is pulled in via `include` from it.
      */
-    public const MAIN_NAME = 'main';
+    public const string MAIN_NAME = 'main';
 
     /**
      * @var string[] Absolute root directories, lowest priority first.
@@ -51,9 +51,11 @@ final readonly class VclFileResolver implements SingletonInterface
                 if (!is_file($path)) {
                     continue;
                 }
+
                 $files[basename($path, '.vcl')] = (string)file_get_contents($path);
             }
         }
+
         ksort($files);
 
         return $files;

@@ -114,6 +114,7 @@ abstract class AbstractFastlyServiceCommand extends Command
         foreach ($result['addedDomains'] ?? [] as $domain) {
             $rows[] = [(string)$domain, 'added'];
         }
+
         foreach ($result['existingDomains'] ?? [] as $domain) {
             $rows[] = [(string)$domain, 'already configured'];
         }
@@ -145,9 +146,11 @@ abstract class AbstractFastlyServiceCommand extends Command
         foreach ($status['matchingDomains'] as $domain) {
             $rows[] = [(string)$domain, 'configured'];
         }
+
         foreach ($status['missingDomains'] as $domain) {
             $rows[] = [(string)$domain, 'missing in Fastly'];
         }
+
         foreach ($status['unknownDomains'] as $domain) {
             $rows[] = [(string)$domain, 'not in TYPO3 site config'];
         }

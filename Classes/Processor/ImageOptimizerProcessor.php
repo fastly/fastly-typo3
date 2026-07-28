@@ -39,7 +39,7 @@ final readonly class ImageOptimizerProcessor implements ProcessorInterface
 
         $allowedFileExtensions = GeneralUtility::trimExplode(
             ',',
-            empty($this->allowedExtensions) ? 'jpg,jpeg,webp,avif,png,tiff' : $this->allowedExtensions
+            $this->allowedExtensions === '' || $this->allowedExtensions === '0' ? 'jpg,jpeg,webp,avif,png,tiff' : $this->allowedExtensions
         );
 
         $sourceFile = $task->getSourceFile();
@@ -48,11 +48,11 @@ final readonly class ImageOptimizerProcessor implements ProcessorInterface
             && in_array($task->getName(), ['Preview', 'CropScaleMask'], true)
             && $sourceFile->getProperty('width') > 0
             && $sourceFile->getProperty('height') > 0
-            && !($this->ignoreAssets && str_starts_with($sourceFile->getPublicUrl(), '/_assets/'))
+            && (!$this->ignoreAssets || !str_starts_with((string) $sourceFile->getPublicUrl(), '/_assets/'))
         );
     }
 
-    public function processTask(TaskInterface $task)
+    public function processTask(TaskInterface $task): void
     {
         $processedFile = $task->getTargetFile();
         $processingConfiguration = $processedFile->getProcessingConfiguration();
@@ -69,7 +69,7 @@ final readonly class ImageOptimizerProcessor implements ProcessorInterface
             $urlBuilder->allowUpscaling();
         }
 
-        if (!empty($this->quality)) {
+        if ($this->quality !== '' && $this->quality !== '0') {
             $urlBuilder->setQuality($this->quality);
         } else {
             $urlBuilder->setQuality($GLOBALS['TYPO3_CONF_VARS']['GFX']['jpg_quality']);
@@ -115,11 +115,11 @@ final readonly class ImageOptimizerProcessor implements ProcessorInterface
     protected function getPublicUrlOfSourceFile(FileInterface $sourceFile): string
     {
         $publicUrl = $sourceFile->getPublicUrl();
-        if (!str_starts_with($publicUrl, 'http://') && !str_starts_with($publicUrl, 'https://')) {
-            if (!empty($this->assetUrl)) {
-                $publicUrl = rtrim($this->assetUrl, '/') . '/' . ltrim($publicUrl, '/');
+        if (!str_starts_with((string) $publicUrl, 'http://') && !str_starts_with((string) $publicUrl, 'https://')) {
+            if ($this->assetUrl !== '' && $this->assetUrl !== '0') {
+                $publicUrl = rtrim($this->assetUrl, '/') . '/' . ltrim((string) $publicUrl, '/');
             } else {
-                $publicUrl = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/' . ltrim($publicUrl, '/');
+                $publicUrl = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/' . ltrim((string) $publicUrl, '/');
             }
         }
 

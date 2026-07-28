@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Command;
 
+use Throwable;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -45,8 +46,8 @@ final class FastlyServiceUpdateCommand extends AbstractFastlyServiceCommand
                 $input->getOption('name') === null ? null : trim((string)$input->getOption('name')),
                 $input->getOption('comment') === null ? null : (string)$input->getOption('comment'),
             );
-        } catch (\Throwable $e) {
-            $io->error('Fastly API request failed: ' . $e->getMessage());
+        } catch (Throwable $throwable) {
+            $io->error('Fastly API request failed: ' . $throwable->getMessage());
             return Command::FAILURE;
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Command;
 
+use Throwable;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -32,8 +33,8 @@ final class FastlyServiceCheckCommand extends AbstractFastlyServiceCommand
 
         try {
             $status = $this->provisioner->checkService($serviceId, $domains);
-        } catch (\Throwable $e) {
-            $io->error('Fastly API request failed: ' . $e->getMessage());
+        } catch (Throwable $throwable) {
+            $io->error('Fastly API request failed: ' . $throwable->getMessage());
             return Command::FAILURE;
         }
 

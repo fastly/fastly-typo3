@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Command;
 
+use Throwable;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Service\FlushService;
 use Fastly\Cdn\Service\VclProvisioner;
@@ -47,8 +48,8 @@ final class FastlyVclProvisionCommand extends Command
         $dryRun = (bool)$input->getOption('dry-run');
         try {
             $result = $this->provisioner->provision($serviceId, !(bool)$input->getOption('no-activate'), $dryRun);
-        } catch (\Throwable $e) {
-            $io->error('Fastly API request failed: ' . $e->getMessage());
+        } catch (Throwable $throwable) {
+            $io->error('Fastly API request failed: ' . $throwable->getMessage());
             return Command::FAILURE;
         }
 
@@ -82,9 +83,11 @@ final class FastlyVclProvisionCommand extends Command
         foreach ($result['created'] as $name) {
             $rows[] = [(string)$name, $verb === '' ? 'created' : 'to create'];
         }
+
         foreach ($result['updated'] as $name) {
             $rows[] = [(string)$name, $verb === '' ? 'updated' : 'to update'];
         }
+
         foreach ($result['unchanged'] as $name) {
             $rows[] = [(string)$name, 'unchanged'];
         }

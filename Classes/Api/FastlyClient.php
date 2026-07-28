@@ -28,12 +28,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\SingletonInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[Autoconfigure(public: true)]
 final readonly class FastlyClient implements FastlyClientInterface, SingletonInterface
 {
-    private const CACHE_KEY_PREFIX = 'fastly';
+    private const string CACHE_KEY_PREFIX = 'fastly';
 
     private ServiceApi $serviceApi;
 
@@ -55,14 +54,14 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
 
     public function __construct(
         #[Autowire(service: 'fastly_cdn_fastlyclient')]
-        private readonly ClientInterface $client,
+        private ClientInterface $client,
         #[Autowire(service: 'cache.runtime')]
-        private readonly FrontendInterface $runtimeCache,
+        private FrontendInterface $runtimeCache,
         #[SensitiveParameter]
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "apiToken")')]
-        private readonly string $apiToken,
+        private string $apiToken,
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "serviceId")')]
-        private readonly string $serviceId,
+        private string $serviceId,
     ) {
         $config = Configuration::getDefaultConfiguration()->setApiToken($this->apiToken);
         $this->serviceApi = new ServiceApi($this->client, $config);
@@ -97,6 +96,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
         if ($name !== null && $name !== '') {
             $options['name'] = $name;
         }
+
         if ($comment !== null) {
             $options['comment'] = $comment;
         }
@@ -113,6 +113,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
         if (!$this->runtimeCache->has($cacheIdentifier)) {
             $this->runtimeCache->set($cacheIdentifier, $this->versionApi->listServiceVersions(['service_id' => $serviceId]));
         }
+
         return $this->runtimeCache->get($cacheIdentifier);
     }
 

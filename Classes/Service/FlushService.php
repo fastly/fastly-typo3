@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Service;
 
 use Fastly\ApiException;
-use Fastly\Cdn\Api\FastlyClient;
+use Fastly\Cdn\Api\FastlyClientInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -13,7 +13,7 @@ use TYPO3\CMS\Core\SingletonInterface;
 final readonly class FlushService implements SingletonInterface
 {
     public function __construct(
-        protected FastlyClient $client,
+        protected FastlyClientInterface $client,
         protected LoggerInterface $logger,
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "enableCdn")')]
         private bool|string $enableCdn = true,
@@ -28,8 +28,8 @@ final readonly class FlushService implements SingletonInterface
 
         try {
             $this->client->purgeByTag($tag);
-        } catch (ApiException $e) {
-            $this->logger->error('failed purging Fastly cache by tag', ['exception' => $e, 'tag' => $tag]);
+        } catch (ApiException $apiException) {
+            $this->logger->error('failed purging Fastly cache by tag', ['exception' => $apiException, 'tag' => $tag]);
         }
     }
 
@@ -44,12 +44,13 @@ final readonly class FlushService implements SingletonInterface
                 foreach ($tags as $tag) {
                     $this->purgeTag($tag);
                 }
+
                 return;
             }
 
             $this->client->purgeByTags($tags);
-        } catch (ApiException $e) {
-            $this->logger->error('failed purging Fastly cache by tag', ['exception' => $e, 'tags' => $tags]);
+        } catch (ApiException $apiException) {
+            $this->logger->error('failed purging Fastly cache by tag', ['exception' => $apiException, 'tags' => $tags]);
         }
     }
 
@@ -61,8 +62,8 @@ final readonly class FlushService implements SingletonInterface
 
         try {
             $this->client->purgeAll();
-        } catch (ApiException $e) {
-            $this->logger->error('failed purging all Fastly caches', ['exception' => $e]);
+        } catch (ApiException $apiException) {
+            $this->logger->error('failed purging all Fastly caches', ['exception' => $apiException]);
         }
     }
 
