@@ -7,6 +7,8 @@ namespace Fastly\Cdn\Api;
 use Fastly\Model\DomainResponse;
 use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
+use Fastly\Model\ValidatorResult;
+use Fastly\Model\VclResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 
@@ -43,6 +45,21 @@ interface FastlyClientInterface
 
     public function createDomain(string $serviceId, int $version, string $domain): DomainResponse;
 
+    /**
+     * @return VclResponse[]
+     */
+    public function listCustomVcl(string $serviceId, int $version): array;
+
+    public function getCustomVclRaw(string $serviceId, int $version, string $name): string;
+
+    public function createCustomVcl(string $serviceId, int $version, string $name, string $content, bool $main = false): VclResponse;
+
+    public function updateCustomVcl(string $serviceId, int $version, string $name, string $content): VclResponse;
+
+    public function setCustomVclMain(string $serviceId, int $version, string $name): VclResponse;
+
+    public function lintVcl(string $serviceId, string $content): ValidatorResult;
+
     public function enableHttp3(string $serviceId, int $version): void;
 
     public function getHttp3(string $serviceId, int $version): object;
@@ -60,6 +77,8 @@ interface FastlyClientInterface
     public function getDdosProtection(string $serviceId): object;
 
     public function purgeByTag(string $tag): void;
+
+    public function purgeByTags(array $tags): void;
 
     public function purgeAll(): void;
 }

@@ -4,13 +4,15 @@ serviceId =
 apiToken =
 # cat=Fastly/; type=string; label=Asset base URL: Base URL prepended to relative source file URLs (e.g. https://cdn.example.com)
 assetUrl = _images/
-# cat=Fastly/; type=boolean; label=imgproxy url
-enableImageOptimizer = true
-# cat=Fastly/; type=boolean; label=imgproxy url
-enableCdn = true
+# cat=Fastly/; type=boolean; label=Enable image optimization
+enableImageOptimizer = 1
+# cat=Fastly/; type=boolean; label=Enable CDN
+enableCdn = 1
 # cat=Fastly/; type=string; label=Format quality: Overrides GFX/jpg_quality. See https://www.fastly.com/documentation/reference/io/quality/
 quality = 85,75
 # cat=Fastly/; type=string; label=Allowed file extensions
 allowedExtensions = jpg,jpeg,webp,avif,png,tiff
 # cat=Fastly/; type=boolean; label=Ignore assets
-ignoreAssets = false
+ignoreAssets = 0
+# cat=Fastly/; type=string; label=VCL root paths: Comma-separated override paths for custom VCL files (Fluid-style, later wins), e.g. EXT:sitepackage/Resources/Private/FastlyVCL/. The extension default is always the lowest priority.
+vclRootPaths =

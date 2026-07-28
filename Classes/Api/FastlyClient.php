@@ -11,22 +11,30 @@ use Fastly\Api\ProductBotManagementApi;
 use Fastly\Api\ProductDdosProtectionApi;
 use Fastly\Api\ProductNgwafApi;
 use Fastly\Api\ServiceApi;
+use Fastly\Api\VclApi;
 use Fastly\Api\VersionApi;
 use Fastly\Configuration;
 use Fastly\Model\DomainResponse;
+use Fastly\Model\InlineObject;
 use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
+use Fastly\Model\ValidatorResult;
+use Fastly\Model\VclResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use GuzzleHttp\ClientInterface;
 use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\SingletonInterface;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 #[Autoconfigure(public: true)]
 final readonly class FastlyClient implements FastlyClientInterface, SingletonInterface
 {
+    private const CACHE_KEY_PREFIX = 'fastly';
+
     private ServiceApi $serviceApi;
 
     private VersionApi $versionApi;
@@ -41,11 +49,15 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
 
     private ProductDdosProtectionApi $ddosProtectionApi;
 
+    private VclApi $vclApi;
+
     private PurgeApi $purgeApi;
 
     public function __construct(
         #[Autowire(service: 'fastly_cdn_fastlyclient')]
         private readonly ClientInterface $client,
+        #[Autowire(service: 'cache.runtime')]
+        private readonly FrontendInterface $runtimeCache,
         #[SensitiveParameter]
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "apiToken")')]
         private readonly string $apiToken,
@@ -60,6 +72,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
         $this->botManagementApi = new ProductBotManagementApi($this->client, $config);
         $this->ngwafApi = new ProductNgwafApi($this->client, $config);
         $this->ddosProtectionApi = new ProductDdosProtectionApi($this->client, $config);
+        $this->vclApi = new VclApi($this->client, $config);
         $this->purgeApi = new PurgeApi($this->client, $config);
     }
 
@@ -96,7 +109,11 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
      */
     public function listServiceVersions(string $serviceId): array
     {
-        return $this->versionApi->listServiceVersions(['service_id' => $serviceId]);
+        $cacheIdentifier = sprintf('%s-%s-%s',self::CACHE_KEY_PREFIX, 'listServiceVersions', $serviceId);
+        if (!$this->runtimeCache->has($cacheIdentifier)) {
+            $this->runtimeCache->set($cacheIdentifier, $this->versionApi->listServiceVersions(['service_id' => $serviceId]));
+        }
+        return $this->runtimeCache->get($cacheIdentifier);
     }
 
     public function cloneServiceVersion(string $serviceId, int $version): Version
@@ -132,6 +149,66 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
             'service_id' => $serviceId,
             'version_id' => $version,
             'name' => $domain,
+        ]);
+    }
+
+    /**
+     * @return VclResponse[]
+     */
+    public function listCustomVcl(string $serviceId, int $version): array
+    {
+        return $this->vclApi->listCustomVcl(['service_id' => $serviceId, 'version_id' => $version]);
+    }
+
+    public function getCustomVclRaw(string $serviceId, int $version, string $name): string
+    {
+        $result = $this->vclApi->getCustomVcl([
+            'service_id' => $serviceId,
+            'version_id' => $version,
+            'vcl_name' => $name,
+        ]);
+        return $result->getContent();
+    }
+
+    public function createCustomVcl(string $serviceId, int $version, string $name, string $content, bool $main = false): VclResponse
+    {
+        $options = [
+            'service_id' => $serviceId,
+            'version_id' => $version,
+            'name' => $name,
+            'content' => $content,
+        ];
+        if ($main) {
+            $options['main'] = true;
+        }
+
+        return $this->vclApi->createCustomVcl($options);
+    }
+
+    public function updateCustomVcl(string $serviceId, int $version, string $name, string $content): VclResponse
+    {
+        return $this->vclApi->updateCustomVcl([
+            'service_id' => $serviceId,
+            'version_id' => $version,
+            'vcl_name' => $name,
+            'content' => $content,
+        ]);
+    }
+
+    public function setCustomVclMain(string $serviceId, int $version, string $name): VclResponse
+    {
+        return $this->vclApi->setCustomVclMain([
+            'service_id' => $serviceId,
+            'version_id' => $version,
+            'vcl_name' => $name,
+        ]);
+    }
+
+    public function lintVcl(string $serviceId, string $content): ValidatorResult
+    {
+        return $this->vclApi->lintVclForService([
+            'service_id' => $serviceId,
+            'inline_object' => new InlineObject(['vcl' => $content]),
         ]);
     }
 
@@ -178,12 +255,19 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
     public function purgeByTag(string $tag): void
     {
         $this->purgeApi->purgeTag(
-            ['service_id' => $this->serviceId, 'surrogate_key' => $tag, 'fastly_soft_purge' => true]
+            ['service_id' => $this->serviceId, 'surrogate_key' => strtolower($tag)]
+        );
+    }
+
+    public function purgeByTags(array $tags): void
+    {
+        $this->purgeApi->bulkPurgeTag(
+            ['service_id' => $this->serviceId, 'surrogate_key' => strtolower(implode(' ', $tags))]
         );
     }
 
     public function purgeAll(): void
     {
-        $this->purgeApi->purgeAll(['service_id' => $this->serviceId, 'fastly_soft_purge' => true]);
+        $this->purgeApi->purgeAll(['service_id' => $this->serviceId]);
     }
 }

@@ -17,3 +17,6 @@ max_line_length = 115
 
 [{*.yml,*.yaml}]
 indent_size = 2
+
+[*.vcl]
+indent_size = 2

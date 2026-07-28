@@ -7,6 +7,7 @@ namespace Fastly\Cdn\Tests\Unit\Service;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Service\FastlyServiceProvisioner;
+use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Model\DomainResponse;
 use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
@@ -78,7 +79,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
 
         // The clone must be tagged so a later run can recognise and reuse it.
         $client->expects(self::once())->method('updateServiceVersionComment')
-            ->with('svc', 4, FastlyServiceProvisioner::MANAGED_VERSION_COMMENT)
+            ->with('svc', 4, ManagedVersionResolver::MANAGED_VERSION_COMMENT)
             ->willReturn(new VersionResponse(['number' => 4]));
 
         $createdOnVersion = null;
@@ -95,7 +96,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
                 return new VersionResponse(['number' => $v]);
             });
 
-        $result = (new FastlyServiceProvisioner($client))->updateService('svc', ['example.com'], [], true);
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->updateService('svc', ['example.com'], [], true);
 
         self::assertSame(4, $result['version']);
         self::assertTrue($result['cloned']);
@@ -113,7 +114,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn($this->versions([
             ['number' => 2, 'active' => true, 'locked' => true],
-            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => FastlyServiceProvisioner::MANAGED_VERSION_COMMENT],
+            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => ManagedVersionResolver::MANAGED_VERSION_COMMENT],
         ]));
         $client->method('listDomains')->willReturn($this->domains([]));
         $client->method('getHttp3')->willThrowException($this->notFound());
@@ -129,7 +130,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
                 return new DomainResponse(['name' => $d]);
             });
 
-        $result = (new FastlyServiceProvisioner($client))->updateService('svc', ['example.com'], [], true);
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->updateService('svc', ['example.com'], [], true);
 
         self::assertSame(3, $result['version']);
         self::assertFalse($result['cloned']);
@@ -146,7 +147,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn($this->versions([
             ['number' => 2, 'active' => true, 'locked' => true],
-            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => FastlyServiceProvisioner::MANAGED_VERSION_COMMENT],
+            ['number' => 3, 'active' => false, 'locked' => false, 'comment' => ManagedVersionResolver::MANAGED_VERSION_COMMENT],
         ]));
         // Active version (2) still lacks the domain; the managed draft (3) already has it.
         $client->method('listDomains')->willReturnCallback(
@@ -161,7 +162,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->expects(self::never())->method('createDomain');
         $client->expects(self::never())->method('activateServiceVersion');
 
-        $result = (new FastlyServiceProvisioner($client))->updateService('svc', ['example.com'], [], true);
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->updateService('svc', ['example.com'], [], true);
 
         self::assertSame(3, $result['version']);
         self::assertFalse($result['cloned']);
@@ -176,7 +177,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->expects(self::never())->method('createDomain');
         $client->expects(self::never())->method('activateServiceVersion');
 
-        $result = (new FastlyServiceProvisioner($client))->addService(
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->addService(
             'name',
             '',
             ['example.com', 'example.org'],
@@ -213,7 +214,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
             ->with('new-svc', 1)
             ->willReturn(new VersionResponse(['number' => 1]));
 
-        $result = (new FastlyServiceProvisioner($client))->addService(
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->addService(
             'name',
             '',
             ['example.com', 'example.org'],
@@ -240,7 +241,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->method('getNgwaf')->willThrowException($this->notFound());
         $client->method('getDdosProtection')->willThrowException($this->notFound());
 
-        $status = (new FastlyServiceProvisioner($client))->checkService('svc', ['example.com', 'new.example.com']);
+        $status = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->checkService('svc', ['example.com', 'new.example.com']);
 
         self::assertSame(2, $status['activeVersion']);
         self::assertSame(['example.com'], $status['matchingDomains']);
@@ -262,7 +263,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->method('getNgwaf')->willThrowException($this->notFound());
         $client->method('getDdosProtection')->willThrowException($this->notFound());
 
-        $status = (new FastlyServiceProvisioner($client))->checkService('svc', []);
+        $status = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->checkService('svc', []);
 
         self::assertTrue($status['features'][FastlyServiceProvisioner::FEATURE_HTTP3]);
         self::assertTrue($status['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
@@ -287,7 +288,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->method('getNgwaf')->willThrowException(new ApiException('not enabled', $statusCode));
         $client->method('getDdosProtection')->willThrowException(new ApiException('not enabled', $statusCode));
 
-        $status = (new FastlyServiceProvisioner($client))->checkService('svc', []);
+        $status = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->checkService('svc', []);
 
         self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_HTTP3]);
         self::assertFalse($status['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
@@ -317,7 +318,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->method('getHttp3')->willThrowException(new ApiException('server error', 500));
 
         $this->expectException(ApiException::class);
-        (new FastlyServiceProvisioner($client))->checkService('svc', []);
+        (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->checkService('svc', []);
     }
 
     public function testUpdateReportsAlreadyActiveFeatureWithoutReEnabling(): void
@@ -337,7 +338,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $client->expects(self::never())->method('enableHttp3');
         $client->expects(self::never())->method('activateServiceVersion');
 
-        $result = (new FastlyServiceProvisioner($client))->updateService(
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->updateService(
             'svc',
             ['example.com'],
             [FastlyServiceProvisioner::FEATURE_HTTP3 => true],

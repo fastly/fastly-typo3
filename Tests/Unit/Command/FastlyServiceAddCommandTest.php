@@ -8,6 +8,7 @@ use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Command\FastlyServiceAddCommand;
 use Fastly\Cdn\Service\FastlyServiceProvisioner;
+use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\SiteDomainCollector;
 use Psr\Http\Message\UriInterface;
 use Symfony\Component\Console\Command\Command;
@@ -35,7 +36,7 @@ final class FastlyServiceAddCommandTest extends UnitTestCase
     {
         $command = new FastlyServiceAddCommand(
             $this->collectorWithHost('example.com'),
-            new FastlyServiceProvisioner($client),
+            new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)),
             $client,
         );
 

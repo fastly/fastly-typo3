@@ -7,7 +7,6 @@ namespace Fastly\Cdn\Service;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Model\DomainResponse;
-use Fastly\Model\SchemasVersionResponse;
 use TYPO3\CMS\Core\SingletonInterface;
 
 final readonly class FastlyServiceProvisioner implements SingletonInterface
@@ -18,14 +17,6 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
     public const FEATURE_DDOS_PROTECTION = 'ddosProtection';
 
     /**
-     * Marker written to the comment of versions this extension clones for an
-     * update. Only versions carrying this marker are reused on a later run, so
-     * an update stays idempotent (no draft sprawl under --no-activate) without
-     * ever reusing an unrelated draft created outside the extension.
-     */
-    public const MANAGED_VERSION_COMMENT = 'Draft managed by the TYPO3 Fastly extension.';
-
-    /**
      * Client-error codes returned when a product/feature is not enabled on a
      * service. Fastly's enablement API is not pinned to a single code across
      * products (unverified contract: docs do not document the not-enabled
@@ -34,8 +25,10 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
      */
     private const NOT_ENABLED_STATUS_CODES = [400, 403, 404];
 
-    public function __construct(private FastlyClientInterface $client)
-    {
+    public function __construct(
+        private FastlyClientInterface $client,
+        private ManagedVersionResolver $versions,
+    ) {
     }
 
     /**
@@ -65,7 +58,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
 
         $service = $this->client->createService($name, $comment);
         $serviceId = (string)$service->getId();
-        $version = $this->findEditableVersion($serviceId);
+        $version = $this->versions->resolveEditableVersion($serviceId);
 
         $addedDomains = $this->addMissingDomains($serviceId, $version, $domains);
         $featureChanges = $this->enableFeatures($serviceId, $version, $features);
@@ -124,13 +117,9 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
         }
 
         if ($needsVersion) {
-            $managedDraft = $this->findManagedDraft($serviceId);
-            if ($managedDraft !== null) {
-                $targetVersion = $managedDraft;
-            } else {
-                $targetVersion = $this->cloneManagedVersion($serviceId, (int)$status['activeVersion']);
-                $cloned = true;
-            }
+            $draft = $this->versions->acquireEditableDraft($serviceId, (int)$status['activeVersion']);
+            $targetVersion = $draft['version'];
+            $cloned = $draft['cloned'];
         }
 
         $addedDomains = $needsVersion ? $this->addMissingDomains($serviceId, $targetVersion, $domains) : [];
@@ -157,7 +146,7 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
      */
     public function checkService(string $serviceId, array $configuredDomains): array
     {
-        $activeVersion = $this->findActiveVersion($serviceId);
+        $activeVersion = $this->versions->resolveActiveVersion($serviceId);
         $serviceDomains = $this->domainNames($this->client->listDomains($serviceId, $activeVersion));
         $configuredLookup = array_fill_keys($configuredDomains, true);
         $serviceLookup = array_fill_keys($serviceDomains, true);
@@ -268,90 +257,6 @@ final readonly class FastlyServiceProvisioner implements SingletonInterface
             }
             throw $e;
         }
-    }
-
-    private function findEditableVersion(string $serviceId): int
-    {
-        $versions = $this->client->listServiceVersions($serviceId);
-        foreach ($versions as $version) {
-            if ((bool)$version->getLocked() === false) {
-                return (int)$version->getNumber();
-            }
-        }
-
-        $latest = $this->latestVersion($versions);
-        if ($latest !== null) {
-            return (int)$latest->getNumber();
-        }
-
-        return 1;
-    }
-
-    /**
-     * The highest-numbered inactive, unlocked version this extension previously
-     * created (recognised by its comment marker), or null if there is none.
-     * Only our own drafts are reused; an unrelated draft left by another tool or
-     * a UI user is never touched, so its staged config cannot be published.
-     */
-    private function findManagedDraft(string $serviceId): ?int
-    {
-        $managed = null;
-        foreach ($this->client->listServiceVersions($serviceId) as $version) {
-            if ((bool)$version->getActive() === false
-                && (bool)$version->getLocked() === false
-                && (string)$version->getComment() === self::MANAGED_VERSION_COMMENT
-            ) {
-                $number = (int)$version->getNumber();
-                if ($managed === null || $number > $managed) {
-                    $managed = $number;
-                }
-            }
-        }
-
-        return $managed;
-    }
-
-    /**
-     * Clone the active version to obtain a known-clean draft and tag it so a
-     * later run can recognise and reuse it instead of cloning again.
-     */
-    private function cloneManagedVersion(string $serviceId, int $activeVersion): int
-    {
-        $version = (int)$this->client->cloneServiceVersion($serviceId, $activeVersion)->getNumber();
-        $this->client->updateServiceVersionComment($serviceId, $version, self::MANAGED_VERSION_COMMENT);
-
-        return $version;
-    }
-
-    /**
-     * @param SchemasVersionResponse[]|null $versions
-     */
-    private function findActiveVersion(string $serviceId, ?array $versions = null): int
-    {
-        $versions ??= $this->client->listServiceVersions($serviceId);
-        foreach ($versions as $version) {
-            if ((bool)$version->getActive()) {
-                return (int)$version->getNumber();
-            }
-        }
-
-        $latest = $this->latestVersion($versions);
-        return $latest === null ? 1 : (int)$latest->getNumber();
-    }
-
-    /**
-     * @param SchemasVersionResponse[] $versions
-     */
-    private function latestVersion(array $versions): ?SchemasVersionResponse
-    {
-        $latest = null;
-        foreach ($versions as $version) {
-            if ($latest === null || (int)$version->getNumber() > (int)$latest->getNumber()) {
-                $latest = $version;
-            }
-        }
-
-        return $latest;
     }
 
     /**

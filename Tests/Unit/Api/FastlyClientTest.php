@@ -32,6 +32,12 @@ final class FastlyClientTest extends UnitTestCase
             new Response(200, [], '{"status":"ok"}'),
             new Response(200, [], '{"status":"ok"}'),
         ]);
+
+        return $this->clientFromMock($mock, $container);
+    }
+
+    private function clientFromMock(MockHandler $mock, array &$container): FastlyClient
+    {
         $stack = HandlerStack::create($mock);
         $stack->push(Middleware::history($container));
         $guzzle = new Client(['handler' => $stack]);
@@ -39,15 +45,79 @@ final class FastlyClientTest extends UnitTestCase
         return new FastlyClient($guzzle, 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER');
     }
 
-    public function testPurgeByTagSendsSoftPurgeHeader(): void
+    public function testCreateCustomVclPostsNameContentAndMainFlag(): void
+    {
+        $history = [];
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"name":"main"}')]), $history);
+
+        $client->createCustomVcl('svc', 3, 'main', 'sub vcl_recv {}', true);
+
+        $request = $history[0]['request'];
+        self::assertSame('POST', $request->getMethod());
+        self::assertSame('/service/svc/version/3/vcl', $request->getUri()->getPath());
+        $body = urldecode((string) $request->getBody());
+        self::assertStringContainsString('name=main', $body);
+        self::assertStringContainsString('main=true', $body);
+        self::assertStringContainsString('sub vcl_recv', $body);
+    }
+
+    public function testUpdateCustomVclPutsToNamedVclWithContent(): void
+    {
+        $history = [];
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"name":"caching"}')]), $history);
+
+        $client->updateCustomVcl('svc', 3, 'caching', 'sub fastly_caching_fetch {}');
+
+        $request = $history[0]['request'];
+        self::assertSame('PUT', $request->getMethod());
+        self::assertSame('/service/svc/version/3/vcl/caching', $request->getUri()->getPath());
+        self::assertStringContainsString('fastly_caching_fetch', urldecode((string) $request->getBody()));
+    }
+
+    public function testSetCustomVclMainPutsToMainEndpoint(): void
+    {
+        $history = [];
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"name":"main"}')]), $history);
+
+        $client->setCustomVclMain('svc', 3, 'main');
+
+        $request = $history[0]['request'];
+        self::assertSame('PUT', $request->getMethod());
+        self::assertSame('/service/svc/version/3/vcl/main/main', $request->getUri()->getPath());
+    }
+
+    public function testGetCustomVclRawReturnsRawBody(): void
+    {
+        $history = [];
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], 'sub vcl_recv {}')]), $history);
+
+        $raw = $client->getCustomVclRaw('svc', 3, 'main');
+
+        self::assertSame('sub vcl_recv {}', $raw);
+        self::assertSame('/service/svc/version/3/vcl/main/download', $history[0]['request']->getUri()->getPath());
+    }
+
+    public function testLintVclPostsContentToServiceLintEndpoint(): void
+    {
+        $history = [];
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"status":"ok"}')]), $history);
+
+        $client->lintVcl('svc', 'sub vcl_recv {}');
+
+        $request = $history[0]['request'];
+        self::assertSame('POST', $request->getMethod());
+        self::assertSame('/service/svc/lint', $request->getUri()->getPath());
+        self::assertStringContainsString('vcl_recv', urldecode((string) $request->getBody()));
+    }
+
+    public function testPurgeByTagDoesNotSendSoftPurgeHeader(): void
     {
         $history = [];
         $client = $this->buildClientWithHistory($history);
         $client->purgeByTag('any-tag');
 
-        // The Fastly PHP SDK serialises `fastly_soft_purge => true` as header value "true"
         $request = $history[0]['request'];
-        self::assertSame('true', $request->getHeaderLine('Fastly-Soft-Purge'));
+        self::assertSame('', $request->getHeaderLine('Fastly-Soft-Purge'));
     }
 
     public function testPurgeByTagIncludesServiceId(): void
