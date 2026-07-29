@@ -11,6 +11,10 @@ use Fastly\Cdn\Command\FastlyServiceAddCommand;
 use Fastly\Cdn\Service\FastlyServiceProvisioner;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\SiteDomainCollector;
+use Fastly\Model\DomainResponse;
+use Fastly\Model\SchemasVersionResponse;
+use Fastly\Model\ServiceResponse;
+use Fastly\Model\VersionResponse;
 use Psr\Http\Message\UriInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -71,5 +75,52 @@ final class FastlyServiceAddCommandTest extends UnitTestCase
 
         $this->assertSame(Command::FAILURE, $exitCode);
         $this->assertStringContainsString('unauthorized', $tester->getDisplay());
+    }
+
+    public function testCreatesServiceAddsDomainAndPrintsServiceIdNote(): void
+    {
+        $client = $this->createMock(FastlyClientInterface::class);
+        $client->expects($this->once())->method('createService')
+            ->with('My Service', 'managed by TYPO3')
+            ->willReturn(new ServiceResponse(['id' => 'new-svc']));
+        $client->method('listServiceVersions')->willReturn([
+            new SchemasVersionResponse(['number' => 1, 'active' => false, 'locked' => false]),
+        ]);
+        $client->method('listDomains')->willReturn([]);
+        $client->expects($this->once())->method('createDomain')
+            ->with('new-svc', 1, 'example.com')
+            ->willReturn(new DomainResponse(['name' => 'example.com']));
+        $client->expects($this->once())->method('activateServiceVersion')
+            ->with('new-svc', 1)
+            ->willReturn(new VersionResponse(['number' => 1]));
+
+        $tester = $this->tester($client);
+        $exitCode = $tester->execute(['--name' => 'My Service', '--comment' => 'managed by TYPO3']);
+
+        $this->assertSame(Command::SUCCESS, $exitCode);
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Set this value as the extension serviceId: new-svc', $display);
+        $this->assertStringContainsString('example.com', $display);
+        $this->assertStringContainsString('added', $display);
+    }
+
+    public function testFailsCleanlyWithoutSiteDomains(): void
+    {
+        $client = $this->createMock(FastlyClientInterface::class);
+        $client->expects($this->never())->method('createService');
+
+        $siteFinder = $this->createMock(SiteFinder::class);
+        $siteFinder->method('getAllSites')->willReturn([]);
+        $command = new FastlyServiceAddCommand(
+            new SiteDomainCollector($siteFinder),
+            new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)),
+            $client,
+        );
+
+        $tester = new CommandTester($command);
+        $exitCode = $tester->execute([]);
+
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('No absolute TYPO3 site domains found', $tester->getDisplay());
     }
 }

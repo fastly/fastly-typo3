@@ -349,4 +349,108 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
         $this->assertFalse($result['activated']);
         $this->assertSame([], $result['addedDomains']);
     }
+
+    public function testUpdateEnablesDisabledProducts(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 2, 'active' => true, 'locked' => true],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains(['example.com']));
+        $client->method('getHttp3')->willThrowException($this->notFound());
+        $client->method('getBotManagement')->willThrowException($this->notFound());
+        $client->method('getNgwaf')->willThrowException($this->notFound());
+        $client->method('getDdosProtection')->willThrowException($this->notFound());
+
+        $client->expects($this->once())->method('enableBotManagement')->with('svc');
+        $client->expects($this->once())->method('enableNgwaf')->with('svc');
+        $client->expects($this->once())->method('enableDdosProtection')->with('svc');
+
+        $result = new FastlyServiceProvisioner($client, new ManagedVersionResolver($client))->updateService(
+            'svc',
+            ['example.com'],
+            [
+                FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT => true,
+                FastlyServiceProvisioner::FEATURE_NGWAF => true,
+                FastlyServiceProvisioner::FEATURE_DDOS_PROTECTION => true,
+            ],
+            true,
+        );
+
+        $this->assertSame('enabled', $result['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
+        $this->assertSame('enabled', $result['features'][FastlyServiceProvisioner::FEATURE_NGWAF]);
+        $this->assertSame('enabled', $result['features'][FastlyServiceProvisioner::FEATURE_DDOS_PROTECTION]);
+    }
+
+    public function testUpdateReportsActiveProductsWithoutReEnabling(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 2, 'active' => true, 'locked' => true],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains(['example.com']));
+        $client->method('getHttp3')->willThrowException($this->notFound());
+        $client->method('getBotManagement')->willReturn(new stdClass());
+        $client->method('getNgwaf')->willReturn(new stdClass());
+        $client->method('getDdosProtection')->willReturn(new stdClass());
+
+        $client->expects($this->never())->method('enableBotManagement');
+        $client->expects($this->never())->method('enableNgwaf');
+        $client->expects($this->never())->method('enableDdosProtection');
+
+        $result = new FastlyServiceProvisioner($client, new ManagedVersionResolver($client))->updateService(
+            'svc',
+            ['example.com'],
+            [
+                FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT => true,
+                FastlyServiceProvisioner::FEATURE_NGWAF => true,
+                FastlyServiceProvisioner::FEATURE_DDOS_PROTECTION => true,
+            ],
+            true,
+        );
+
+        $this->assertSame('already active', $result['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
+        $this->assertSame('already active', $result['features'][FastlyServiceProvisioner::FEATURE_NGWAF]);
+        $this->assertSame('already active', $result['features'][FastlyServiceProvisioner::FEATURE_DDOS_PROTECTION]);
+    }
+
+    public function testUpdateServiceDryRunReportsPlannedChangesWithoutApiWrites(): void
+    {
+        $client = $this->client();
+        $client->method('listServiceVersions')->willReturn($this->versions([
+            ['number' => 2, 'active' => true, 'locked' => true],
+        ]));
+        $client->method('listDomains')->willReturn($this->domains([]));
+        $client->method('getHttp3')->willThrowException($this->notFound());
+        $client->method('getBotManagement')->willReturn(new stdClass()); // already enabled
+        $client->method('getNgwaf')->willThrowException($this->notFound());
+        $client->method('getDdosProtection')->willThrowException($this->notFound());
+
+        $client->expects($this->never())->method('updateService');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createDomain');
+        $client->expects($this->never())->method('enableHttp3');
+        $client->expects($this->never())->method('enableBotManagement');
+        $client->expects($this->never())->method('activateServiceVersion');
+
+        $result = new FastlyServiceProvisioner($client, new ManagedVersionResolver($client))->updateService(
+            'svc',
+            ['example.com'],
+            [
+                FastlyServiceProvisioner::FEATURE_HTTP3 => true,
+                FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT => true,
+            ],
+            true,
+            true,
+            'New name',
+            'New comment',
+        );
+
+        $this->assertSame(2, $result['version']);
+        $this->assertTrue($result['cloned'], 'the plan must announce that a new version would be cloned');
+        $this->assertFalse($result['activated']);
+        $this->assertSame(['example.com'], $result['addedDomains']);
+        $this->assertSame('would enable', $result['features'][FastlyServiceProvisioner::FEATURE_HTTP3]);
+        $this->assertSame('already active', $result['features'][FastlyServiceProvisioner::FEATURE_BOT_MANAGEMENT]);
+    }
 }

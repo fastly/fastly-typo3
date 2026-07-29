@@ -10,6 +10,7 @@ use Fastly\Cdn\Service\FlushService;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\LoggerInterface;
@@ -148,5 +149,83 @@ final class FlushServiceTest extends UnitTestCase
         $service = new FlushService($this->createFastlyClient($mock), $logger, true);
         $service->purgeTag('tag-1');
         $service->flushAll();
+    }
+
+    /**
+     * @param string[] $tags
+     */
+    private function tags(int $count): array
+    {
+        return array_map(static fn (int $i): string => 'tag-' . $i, range(1, $count));
+    }
+
+    public function testPurgeTagsDoesNothingWhenCdnDisabled(): void
+    {
+        $mock = new MockHandler([]);
+        $service = new FlushService($this->createFastlyClient($mock), $this->createLogger(), false);
+        $service->purgeTags($this->tags(12));
+
+        $this->assertCount(0, $mock, 'No HTTP request should be made when CDN is disabled');
+    }
+
+    public function testPurgeTagsPurgesFewTagsIndividually(): void
+    {
+        $history = [];
+        $mock = new MockHandler([
+            new Response(200, [], '{"status":"ok"}'),
+            new Response(200, [], '{"status":"ok"}'),
+            new Response(200, [], '{"status":"ok"}'),
+        ]);
+        $stack = HandlerStack::create($mock);
+        $stack->push(Middleware::history($history));
+
+        $client = new FastlyClient(
+            new Client(['handler' => $stack]),
+            $this->createStub(FrontendInterface::class),
+            'API_TOKEN_PLACEHOLDER',
+            'SERVICE_ID_PLACEHOLDER',
+        );
+
+        $service = new FlushService($client, $this->createLogger(), true);
+        $service->purgeTags(['tag-1', 'tag-2', 'tag-3']);
+
+        $this->assertCount(3, $history, 'below the bulk threshold each tag purges as its own request');
+        $this->assertStringContainsString('tag-2', (string) $history[1]['request']->getUri());
+    }
+
+    public function testPurgeTagsUsesSingleBulkRequestForTenOrMoreTags(): void
+    {
+        $history = [];
+        $mock = new MockHandler([new Response(200, [], '{"status":"ok"}')]);
+        $stack = HandlerStack::create($mock);
+        $stack->push(Middleware::history($history));
+
+        $client = new FastlyClient(
+            new Client(['handler' => $stack]),
+            $this->createStub(FrontendInterface::class),
+            'API_TOKEN_PLACEHOLDER',
+            'SERVICE_ID_PLACEHOLDER',
+        );
+
+        $service = new FlushService($client, $this->createLogger(), true);
+        $service->purgeTags($this->tags(10));
+
+        $this->assertCount(1, $history, 'ten or more tags must purge as one bulk request');
+        $request = $history[0]['request'];
+        $this->assertSame('/service/SERVICE_ID_PLACEHOLDER/purge', $request->getUri()->getPath());
+        $this->assertSame(implode(' ', $this->tags(10)), $request->getHeaderLine('surrogate-key'));
+    }
+
+    public function testPurgeTagsLogsErrorWhenBulkPurgeFails(): void
+    {
+        $mock = new MockHandler([new Response(403, [], '{"detail":"Not authorized"}')]);
+        $logger = $this->createLogger();
+        $logger->expects($this->once())->method('error')->with(
+            'failed purging Fastly cache by tag',
+            self::callback(static fn (array $ctx): bool => isset($ctx['tags']) && count($ctx['tags']) === 10),
+        );
+
+        $service = new FlushService($this->createFastlyClient($mock), $logger, true);
+        $service->purgeTags($this->tags(10));
     }
 }
