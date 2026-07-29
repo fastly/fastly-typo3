@@ -41,7 +41,7 @@ jobs:
 
       - name: 'Rector PHP Code'
         shell: bash
-        run: composer rector
+        run: composer rector:fix
 
       - name: 'Normalize Composer files'
         shell: bash

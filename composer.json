@@ -19,8 +19,8 @@
         }
     ],
     "require": {
-        "typo3/cms-core": "^13.4 || ^14.3",
-        "fastly/fastly": "^13.1"
+        "fastly/fastly": "^14.0",
+        "typo3/cms-core": "^13.4 || ^14.3"
     },
     "require-dev": {
         "ext-sqlite3": "*",
@@ -28,6 +28,16 @@
         "phpunit/phpcov": "^11.0",
         "ssch/typo3-rector": "^3.14",
         "typo3/testing-framework": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Fastly\\Cdn\\": "Classes/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fastly\\Cdn\\Tests\\": "Tests/"
+        }
     },
     "config": {
         "allow-plugins": {
@@ -44,16 +54,6 @@
             "web-dir": ".Build/public"
         }
     },
-    "autoload": {
-        "psr-4": {
-            "Fastly\\Cdn\\": "Classes/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Fastly\\Cdn\\Tests\\": "Tests/"
-        }
-    },
     "scripts": {
         "post-autoload-dump": [
             "@prepare-extension-test-structure"
@@ -62,9 +62,8 @@
         "composer:normalize:fix": "@composer normalize --no-check-lock",
         "composer:psr-verify": "@composer dumpautoload --optimize --strict-psr --no-plugins",
         "php:lint": "find Classes -name '*.php' -print0 | xargs -r -0 -n 1 -P 4 php -l",
-        "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G",
-        "rector:dry": "rector process --dry-run",
-        "rector": "rector process",
+        "rector": "rector process --dry-run",
+        "rector:fix": "rector process",
         "test:functional": "phpunit -c phpunit_functional.xml",
         "test:unit": "phpunit -c phpunit.xml"
     }
