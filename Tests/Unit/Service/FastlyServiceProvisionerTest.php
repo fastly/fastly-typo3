@@ -11,7 +11,6 @@ use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Service\FastlyServiceProvisioner;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Model\DomainResponse;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
@@ -23,12 +22,12 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
 {
     /**
      * @param array<int, array{number: int, active: bool, locked: bool}> $versions
-     * @return SchemasVersionResponse[]
+     * @return VersionResponse[]
      */
     private function versions(array $versions): array
     {
         return array_map(
-            static fn (array $v): SchemasVersionResponse => new SchemasVersionResponse($v),
+            static fn (array $v): VersionResponse => new VersionResponse($v),
             $versions,
         );
     }
@@ -98,7 +97,7 @@ final class FastlyServiceProvisionerTest extends UnitTestCase
                 return new VersionResponse(['number' => $v]);
             });
 
-        $result = ((new FastlyServiceProvisioner($client, new ManagedVersionResolver($client))))->updateService('svc', ['example.com'], [], true);
+        $result = (new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)))->updateService('svc', ['example.com'], [], true);
 
         $this->assertSame(4, $result['version']);
         $this->assertTrue($result['cloned']);

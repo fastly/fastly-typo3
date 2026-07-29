@@ -16,7 +16,6 @@ use Fastly\Api\VersionApi;
 use Fastly\Configuration;
 use Fastly\Model\DomainResponse;
 use Fastly\Model\InlineObject;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
 use Fastly\Model\ValidatorResult;
 use Fastly\Model\VclResponse;
@@ -105,7 +104,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
     }
 
     /**
-     * @return SchemasVersionResponse[]
+     * @return VersionResponse[]
      */
     public function listServiceVersions(string $serviceId): array
     {

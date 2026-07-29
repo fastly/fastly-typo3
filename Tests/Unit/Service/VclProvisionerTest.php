@@ -12,7 +12,6 @@ use Fastly\Cdn\Exception\VclProvisioningException;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\VclFileResolver;
 use Fastly\Cdn\Service\VclProvisioner;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -43,11 +42,11 @@ final class VclProvisionerTest extends UnitTestCase
 
     /**
      * @param array<int, array<string, mixed>> $versions
-     * @return SchemasVersionResponse[]
+     * @return VersionResponse[]
      */
     private function versions(array $versions): array
     {
-        return array_map(static fn (array $v): SchemasVersionResponse => new SchemasVersionResponse($v), $versions);
+        return array_map(static fn (array $v): VersionResponse => new VersionResponse($v), $versions);
     }
 
     /**

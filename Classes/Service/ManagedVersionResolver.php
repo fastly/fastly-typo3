@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Service;
 
 use Fastly\Cdn\Api\FastlyClientInterface;
-use Fastly\Model\SchemasVersionResponse;
+use Fastly\Model\VersionResponse;
 use TYPO3\CMS\Core\SingletonInterface;
 
 /**
@@ -39,8 +39,7 @@ final readonly class ManagedVersionResolver implements SingletonInterface
             }
         }
 
-        $latest = $this->latestVersion($versions);
-        return $latest instanceof SchemasVersionResponse ? (int)$latest->getNumber() : 1;
+        return $this->latestVersionNumber($versions) ?? 1;
     }
 
     public function resolveEditableVersion(string $serviceId): int
@@ -52,8 +51,7 @@ final readonly class ManagedVersionResolver implements SingletonInterface
             }
         }
 
-        $latest = $this->latestVersion($versions);
-        return $latest instanceof SchemasVersionResponse ? (int)$latest->getNumber() : 1;
+        return $this->latestVersionNumber($versions) ?? 1;
     }
 
     /**
@@ -100,14 +98,15 @@ final readonly class ManagedVersionResolver implements SingletonInterface
     }
 
     /**
-     * @param SchemasVersionResponse[] $versions
+     * @param VersionResponse[] $versions
      */
-    private function latestVersion(array $versions): ?SchemasVersionResponse
+    private function latestVersionNumber(array $versions): ?int
     {
         $latest = null;
         foreach ($versions as $version) {
-            if ($latest === null || (int)$version->getNumber() > (int)$latest->getNumber()) {
-                $latest = $version;
+            $number = (int)$version->getNumber();
+            if ($latest === null || $number > $latest) {
+                $latest = $number;
             }
         }
 

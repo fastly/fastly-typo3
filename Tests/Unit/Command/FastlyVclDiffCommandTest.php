@@ -10,7 +10,7 @@ use Fastly\Cdn\Command\FastlyVclDiffCommand;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\VclFileResolver;
 use Fastly\Cdn\Service\VclProvisioner;
-use Fastly\Model\SchemasVersionResponse;
+use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -58,7 +58,7 @@ final class FastlyVclDiffCommandTest extends UnitTestCase
     {
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         // main exists and matches; caching exists but differs; (none missing here)
         $client->method('getCustomVclRaw')->willReturnCallback(
@@ -82,7 +82,7 @@ final class FastlyVclDiffCommandTest extends UnitTestCase
     {
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('getCustomVclRaw')->willThrowException(new ApiException('not found', 404));
 

@@ -12,7 +12,6 @@ use Fastly\Cdn\Service\FlushService;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\VclFileResolver;
 use Fastly\Cdn\Service\VclProvisioner;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -88,7 +87,7 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
     {
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('getCustomVclRaw')->willThrowException(new ApiException('not found', 404));
         $client->method('cloneServiceVersion')->willReturn(new Version(['number' => 3]));
@@ -109,7 +108,7 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
     {
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('getCustomVclRaw')->willThrowException(new ApiException('not found', 404));
         $client->expects($this->never())->method('cloneServiceVersion');

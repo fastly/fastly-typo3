@@ -6,7 +6,6 @@ namespace Fastly\Cdn\Tests\Unit\Service;
 
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Service\ManagedVersionResolver;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -15,13 +14,16 @@ use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 final class ManagedVersionResolverTest extends UnitTestCase
 {
     /**
+     * The real SDK deserializes GET /service/{id}/version to VersionResponse
+     * models (see FastlyClientTest) — mocks must hand out the same class.
+     *
      * @param array<int, array<string, mixed>> $versions
-     * @return SchemasVersionResponse[]
+     * @return VersionResponse[]
      */
     private function versions(array $versions): array
     {
         return array_map(
-            static fn (array $v): SchemasVersionResponse => new SchemasVersionResponse($v),
+            static fn (array $v): VersionResponse => new VersionResponse($v),
             $versions,
         );
     }

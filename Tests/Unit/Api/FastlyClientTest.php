@@ -263,9 +263,6 @@ final class FastlyClientTest extends UnitTestCase
         $this->assertCount(1, $history, 'the second call must be served from the runtime cache');
         $this->assertSame('/service/svc/version', $history[0]['request']->getUri()->getPath());
         $this->assertCount(1, $first);
-        // Note: the SDK deserializes this endpoint to VersionResponse, not the
-        // SchemasVersionResponse the FastlyClient docblock advertises. Both models
-        // expose the getters callers rely on (number/active/locked/comment).
         $this->assertInstanceOf(VersionResponse::class, $first[0]);
         $this->assertSame(1, (int) $first[0]->getNumber());
         $this->assertSame($first, $second);

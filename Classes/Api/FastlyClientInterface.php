@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Api;
 
 use Fastly\Model\DomainResponse;
-use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\ServiceResponse;
 use Fastly\Model\ValidatorResult;
 use Fastly\Model\VclResponse;
@@ -28,7 +27,7 @@ interface FastlyClientInterface
     public function updateService(string $serviceId, ?string $name = null, ?string $comment = null): ServiceResponse;
 
     /**
-     * @return SchemasVersionResponse[]
+     * @return VersionResponse[]
      */
     public function listServiceVersions(string $serviceId): array;
 
