@@ -39,6 +39,14 @@ final class FlushServiceTest extends UnitTestCase
         return $this->createMock(LoggerInterface::class);
     }
 
+    /**
+     * @return string[]
+     */
+    private function tags(int $count): array
+    {
+        return array_map(static fn (int $i): string => 'tag-' . $i, range(1, $count));
+    }
+
     public function testBanTagCallsPurgeByTagWhenCdnEnabled(): void
     {
         $mock = new MockHandler([new Response(200, [], '{"status":"ok"}')]);
@@ -149,14 +157,6 @@ final class FlushServiceTest extends UnitTestCase
         $service = new FlushService($this->createFastlyClient($mock), $logger, true);
         $service->purgeTag('tag-1');
         $service->flushAll();
-    }
-
-    /**
-     * @param string[] $tags
-     */
-    private function tags(int $count): array
-    {
-        return array_map(static fn (int $i): string => 'tag-' . $i, range(1, $count));
     }
 
     public function testPurgeTagsDoesNothingWhenCdnDisabled(): void

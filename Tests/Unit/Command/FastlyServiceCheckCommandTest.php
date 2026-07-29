@@ -9,50 +9,20 @@ use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Command\FastlyServiceCheckCommand;
 use Fastly\Cdn\Service\FastlyServiceProvisioner;
-use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\SiteDomainCollector;
 use Fastly\Model\DomainResponse;
-use Fastly\Model\SchemasVersionResponse;
+use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Http\Message\UriInterface;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Tester\CommandTester;
-use TYPO3\CMS\Core\Site\Entity\Site;
-use TYPO3\CMS\Core\Site\SiteFinder;
-use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
-final class FastlyServiceCheckCommandTest extends UnitTestCase
+final class FastlyServiceCheckCommandTest extends AbstractServiceCommandTestCase
 {
-    /**
-     * @param string[] $hosts
-     */
-    private function collectorWithHosts(array $hosts): SiteDomainCollector
-    {
-        $sites = [];
-        foreach ($hosts as $host) {
-            $uri = $this->createMock(UriInterface::class);
-            $uri->method('__toString')->willReturn('https://' . $host . '/');
-            $site = $this->createMock(Site::class);
-            $site->method('getBase')->willReturn($uri);
-            $site->method('getAllLanguages')->willReturn([]);
-            $sites[] = $site;
-        }
-
-        $siteFinder = $this->createMock(SiteFinder::class);
-        $siteFinder->method('getAllSites')->willReturn($sites);
-
-        return new SiteDomainCollector($siteFinder);
-    }
-
-    private function tester(FastlyClientInterface $client, array $hosts = ['example.com']): CommandTester
-    {
-        $command = new FastlyServiceCheckCommand(
-            $this->collectorWithHosts($hosts),
-            new FastlyServiceProvisioner($client, new ManagedVersionResolver($client)),
-            $client,
-        );
-
-        return new CommandTester($command);
+    protected function createCommand(
+        SiteDomainCollector $collector,
+        FastlyServiceProvisioner $provisioner,
+        FastlyClientInterface $client,
+    ): FastlyServiceCheckCommand {
+        return new FastlyServiceCheckCommand($collector, $provisioner, $client);
     }
 
     /**
@@ -61,11 +31,10 @@ final class FastlyServiceCheckCommandTest extends UnitTestCase
      */
     private function clientWithServiceDomains(array $serviceDomains): FastlyClientInterface
     {
-        $notFound = new ApiException('not found', 404);
-        $client = $this->createMock(FastlyClientInterface::class);
-        $client->method('getConfiguredServiceId')->willReturn('svc');
+        $notFound = $this->notFound();
+        $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('listDomains')->willReturn(array_map(
             static fn (string $name): DomainResponse => new DomainResponse(['name' => $name]),
@@ -114,7 +83,7 @@ final class FastlyServiceCheckCommandTest extends UnitTestCase
         $notFound = new ApiException('not found', 404);
         $client = $this->createMock(FastlyClientInterface::class);
         $client->method('listServiceVersions')->willReturn([
-            new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
+            new VersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('listDomains')->willReturn([new DomainResponse(['name' => 'example.com'])]);
         $client->method('getHttp3')->willReturn(new stdClass());
