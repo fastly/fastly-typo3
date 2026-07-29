@@ -16,6 +16,8 @@ return static function (ContainerConfigurator $containerConfigurator): void {
             '../Classes/Command/AbstractFastlyServiceCommand.php',
             '../Classes/Cache/Backend/FastlyBackend.php',
             '../Classes/Cache/Backend/V13/FastlyBackend.php',
+            '../Classes/Resource/ProcessedFileRepository.php',
+            '../Classes/Resource/V13/ProcessedFileRepository.php',
         ]);
     $services->alias(FastlyClientInterface::class, FastlyClient::class);
     $services

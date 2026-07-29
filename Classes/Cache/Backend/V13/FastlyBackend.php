@@ -28,7 +28,7 @@ final class FastlyBackend extends NullBackend
         $this->flushService->purgeTags($tags);
     }
 
-    public function flushByTag(string $tag)
+    public function flushByTag($tag)
     {
         $this->flushService->purgeTag($tag);
     }

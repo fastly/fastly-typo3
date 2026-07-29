@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Tests\Functional\Resource;
 
 use Fastly\Cdn\Resource\ProcessedFileRepository as FastlyProcessedFileRepository;
+use Fastly\Cdn\Resource\V13\ProcessedFileRepository as FastlyProcessedFileRepositoryV13;
+use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\ProcessedFile;
 use TYPO3\CMS\Core\Resource\ProcessedFileRepository as CoreProcessedFileRepository;
@@ -107,7 +109,10 @@ final class ProcessedFileRepositoryTest extends FunctionalTestCase
     {
         $repository = GeneralUtility::makeInstance(CoreProcessedFileRepository::class);
 
-        $this->assertInstanceOf(FastlyProcessedFileRepository::class, $repository);
+        $expectedClass = (new Typo3Version())->getMajorVersion() < 14
+            ? FastlyProcessedFileRepositoryV13::class
+            : FastlyProcessedFileRepository::class;
+        $this->assertInstanceOf($expectedClass, $repository);
     }
 
     public function testIoEligibleImageBypassesPersistedProcessedFileRecord(): void
