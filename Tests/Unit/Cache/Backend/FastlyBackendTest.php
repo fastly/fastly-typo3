@@ -14,6 +14,7 @@ use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
+use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -59,6 +60,7 @@ final class FastlyBackendTest extends UnitTestCase
 
     public function testFlushDelegatesFlushAll(): void
     {
+        $this->skipTestIfOldVersion();
         $backend = $this->createBackend();
         $backend->flush();
 
@@ -68,6 +70,7 @@ final class FastlyBackendTest extends UnitTestCase
 
     public function testFlushByTagDelegatesBanTag(): void
     {
+        $this->skipTestIfOldVersion();
         $backend = $this->createBackend();
         $backend->flushByTag('my-tag');
 
@@ -77,6 +80,7 @@ final class FastlyBackendTest extends UnitTestCase
 
     public function testFlushByTagsCallsBanTagForEachTag(): void
     {
+        $this->skipTestIfOldVersion();
         $backend = $this->createBackend();
         $backend->flushByTags(['alpha', 'beta', 'gamma']);
 
@@ -92,9 +96,17 @@ final class FastlyBackendTest extends UnitTestCase
 
     public function testFlushByTagsWithEmptyArrayMakesNoRequests(): void
     {
+        $this->skipTestIfOldVersion();
         $backend = $this->createBackend(0);
         $backend->flushByTags([]);
 
         $this->assertCount(0, $this->requestHistory);
+    }
+
+    private function skipTestIfOldVersion()
+    {
+        if ((new Typo3Version())->getMajorVersion() < 14) {
+            self::markTestSkipped();
+        }
     }
 }
