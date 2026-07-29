@@ -23,6 +23,9 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Approve the PR
+        # Major bumps need a human decision (e.g. phpcov majors follow PHPUnit
+        # majors and can drop PHP versions we still support).
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}

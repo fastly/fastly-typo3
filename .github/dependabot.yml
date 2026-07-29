@@ -16,5 +16,10 @@ updates:
     ignore:
       - dependency-name: 'typo3/*'
         update-types: ['version-update:semver-major']
+      # phpcov majors track PHPUnit majors; ^11 is the newest line that still
+      # runs on PHP 8.3 (the ^13 bump was reverted in fa39e55). Drop this
+      # ignore when PHP 8.3 support is dropped.
+      - dependency-name: 'phpunit/phpcov'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: "[Dependabot] "

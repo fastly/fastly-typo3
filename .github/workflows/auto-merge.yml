@@ -15,7 +15,16 @@ jobs:
     if: ${{ github.actor == 'dependabot[bot]' }}
 
     steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Enable auto-merge
+        # Major bumps need a human decision (e.g. phpcov majors follow PHPUnit
+        # majors and can drop PHP versions we still support).
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge -R "${{ github.repository }}" --squash --auto "${{ github.event.pull_request.number }}"
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
