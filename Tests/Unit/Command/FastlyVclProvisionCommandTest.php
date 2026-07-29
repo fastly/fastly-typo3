@@ -8,14 +8,12 @@ use Fastly\Model\VclResponse;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Command\FastlyVclProvisionCommand;
-use Fastly\Cdn\Service\FlushService;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\VclFileResolver;
 use Fastly\Cdn\Service\VclProvisioner;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
@@ -52,7 +50,6 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
         $command = new FastlyVclProvisionCommand(
             $client,
             new VclProvisioner($client, new ManagedVersionResolver($client), new VclFileResolver('', $this->root)),
-            new FlushService($client, $this->createStub(LoggerInterface::class)),
         );
 
         return new CommandTester($command);
@@ -96,6 +93,7 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
         $client->method('setCustomVclMain')->willReturn($this->createStub(VclResponse::class));
         $client->expects($this->once())->method('activateServiceVersion')->with('svc', 3)
             ->willReturn(new VersionResponse(['number' => 3]));
+        $client->expects($this->never())->method('purgeAll');
 
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc']);

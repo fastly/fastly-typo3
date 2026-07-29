@@ -6,7 +6,6 @@ namespace Fastly\Cdn\Command;
 
 use Throwable;
 use Fastly\Cdn\Api\FastlyClientInterface;
-use Fastly\Cdn\Service\FlushService;
 use Fastly\Cdn\Service\VclProvisioner;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -23,7 +22,6 @@ final class FastlyVclProvisionCommand extends Command
     public function __construct(
         private readonly FastlyClientInterface $client,
         private readonly VclProvisioner $provisioner,
-        private readonly FlushService $flushService,
     ) {
         parent::__construct();
     }
@@ -55,10 +53,6 @@ final class FastlyVclProvisionCommand extends Command
 
         if ($dryRun) {
             $io->note('Dry run: no changes were written to Fastly.');
-        }
-
-        if ($result['activated']) {
-           $this->flushService->flushAll();
         }
 
         $io->definitionList(

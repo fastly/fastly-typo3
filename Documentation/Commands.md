@@ -81,6 +81,8 @@ Idempotent: diffs local files against the version it would write to (a reusable 
 clones/uploads/activates when something actually differs. Running it twice on an in-sync service performs no writes and clones no new version. Files present on the service but not
 shipped locally are left alone (upsert only).
 
+Activating a new version does **not** purge the Fastly cache — cached objects stay until their TTL expires or they are purged explicitly.
+
 ### `fastly:vcl:diff`
 
 Read-only. Shows how the resolved local VCL differs from the service.
