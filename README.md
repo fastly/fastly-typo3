@@ -126,7 +126,7 @@ per-site override - one Fastly service serves the whole installation:
 | `ignoreAssets`         | Excludes the TYPO3 assets path from processing.                  |
 | `vclRootPaths`         | Override paths for custom VCL files (Fluid-style, later wins).   |
 
-Full reference, defaults and types: [Documentation/Configuration.md](Documentation/Configuration.md).
+Full reference, defaults and types: [Documentation/Configuration/Index.rst](Documentation/Configuration/Index.rst).
 
 **Best practice: use environment variables.** Don't paste the API token into
 the backend form (it would end up in `settings.php` and possibly in your git
@@ -237,7 +237,7 @@ twice in a row does nothing the second time. Use `--dry-run` to preview and
 `--no-activate` to upload to a draft version without activating it.
 
 Site packages can override or extend the shipped VCL via the `vclRootPaths`
-configuration - see [Documentation/CustomVcl.md](Documentation/CustomVcl.md).
+configuration - see [Documentation/VclCustomization/Index.rst](Documentation/VclCustomization/Index.rst).
 
 That's it. Your site is served through Fastly, images are optimized on the
 edge, and content changes purge exactly the affected pages via Surrogate-Keys.
@@ -293,11 +293,19 @@ again - which can take it down. So:
 | `fastly:vcl:provision`  | Upload and activate the extension's custom VCL (idempotent).      |
 | `fastly:vcl:diff`       | Read-only diff of local VCL against the service.                  |
 
-Full options for every command: [Documentation/Commands.md](Documentation/Commands.md).
+Full options for every command: [Documentation/Commands/Index.rst](Documentation/Commands/Index.rst).
 
 ## Documentation
 
-- [Documentation/Configuration.md](Documentation/Configuration.md) - every configuration key in detail.
-- [Documentation/Commands.md](Documentation/Commands.md) - full CLI reference.
-- [Documentation/CustomVcl.md](Documentation/CustomVcl.md) - how the shipped VCL is structured and how a site package can override it via
-  `vclRootPaths`.
+The full manual lives in [Documentation/](Documentation/Index.rst), written for
+TYPO3's [documentation rendering toolchain](https://docs.typo3.org/m/typo3/docs-how-to-document/main/en-us/):
+
+- [Introduction](Documentation/Introduction/Index.rst) - what the extension does and its requirements.
+- [Installation](Documentation/Installation/Index.rst) - Composer install.
+- [Getting started](Documentation/GettingStarted/Index.rst) - step-by-step guide from a fresh Fastly account to a site served through Fastly.
+- [Configuration](Documentation/Configuration/Index.rst) - every configuration key in detail, plus secret handling for `apiToken`.
+- [Image Optimization](Documentation/ImageOptimization/Index.rst) - how the FAL processor maps TYPO3 instructions to Fastly IO parameters.
+- [Surrogate keys and cache purging](Documentation/SurrogateKeys/Index.rst) - the `Surrogate-Key` middleware and cache flush/purge behavior.
+- [Edge Side Includes](Documentation/Esi/Index.rst) - the `EsiViewHelper` and how to enable ESI processing on a response.
+- [VCL customization](Documentation/VclCustomization/Index.rst) - the shipped VCL layout and the `vclRootPaths` override mechanism.
+- [CLI commands](Documentation/Commands/Index.rst) - full CLI reference for service and VCL provisioning.
