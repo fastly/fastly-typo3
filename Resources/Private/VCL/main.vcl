@@ -1,19 +1,15 @@
 # Fastly custom VCL entry point for the TYPO3 "fastly" extension.
 #
-# Each feature lives in its own custom VCL file, pulled in below. Feature files
-# define the built-in subroutines (vcl_recv, vcl_fetch, ...) directly; Fastly
-# concatenates same-named built-in subroutines in the order the compiler
-# encounters them (https://www.fastly.com/documentation/reference/vcl/subroutines).
-#
-# The includes MUST stay at the top: the boilerplate subroutines below carry the
-# terminating returns (and the #FASTLY macros), and any feature code encountered
-# after a terminating return of the same subroutine would be unreachable. Include
-# order also matters within vcl_fetch — see caching.vcl. Site packages overriding
-# main.vcl must preserve this ordering.
+# All feature logic (caching, grace, ESI, image optimizer, ...) is inlined in
+# the subroutines below. This is the only custom VCL file the service compiles:
+# non-main files are only used via `include`, and none are included here.
 
 sub vcl_recv {
 
-  if (req.http.Fastly-SSL != "1") {
+  # Advertise HTTP/3 via Alt-Svc; unsupported clients fall back to HTTP/2.
+  h3.alt_svc();
+
+  if (!fastly_info.edge.is_tls) {
     error 810 "Force HTTPS";
   }
 
@@ -229,6 +225,26 @@ sub vcl_fetch {
     set beresp.do_esi = true;
   }
 
+  # Compress text responses at fetch time so the compressed object is cached
+  # (better ratio than the per-delivery level-1 X-Compress-Hint path). ESI
+  # responses are excluded: they must stay uncompressed for ESI processing and
+  # are compressed at delivery via X-Compress-Hint instead. Fastly normalizes
+  # Accept-Encoding to exactly "br" or "gzip", so equality checks are correct.
+  if (beresp.status == 200 && beresp.http.Content-Type ~ "text|json|javascript" && !beresp.do_esi) {
+    if (beresp.http.Vary !~ "(?i)Accept-Encoding") {
+      if (beresp.http.Vary) {
+        set beresp.http.Vary = beresp.http.Vary + ", Accept-Encoding";
+      } else {
+        set beresp.http.Vary = "Accept-Encoding";
+      }
+    }
+    if (req.http.Accept-Encoding == "br") {
+      set beresp.brotli = true;
+    } elsif (req.http.Accept-Encoding == "gzip") {
+      set beresp.gzip = true;
+    }
+  }
+
   # Stale-while-revalidate and grace mode.
   #
   # Serve slightly stale content while a fresh copy is fetched in the background,
@@ -252,7 +268,7 @@ sub vcl_error {
   }
 
   # Deliver a custom synthetic response body for DDoS mitigated requests
-  if (obj.status == 429 && obj.response == "DDOS Attack Mitigated") {
+  if (obj.status == 429 && obj.response == "DDoS Attack Mitigated") {
     set obj.http.Content-Type = "text/plain; charset=utf-8";
     synthetic "Request blocked by DDoS Protection.";
     return (deliver);
@@ -280,6 +296,11 @@ sub vcl_deliver {
   unset resp.http.server;
 
   set resp.http.X-Compress-Hint = "on";
+
+  # Security headers. HSTS only over TLS per spec; the rest apply everywhere.
+  if (fastly_info.edge.is_tls) {
+    set resp.http.Strict-Transport-Security = "max-age=31536000; includeSubDomains";
+  }
 
   return(deliver);
 }
