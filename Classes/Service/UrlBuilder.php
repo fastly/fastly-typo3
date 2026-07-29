@@ -92,7 +92,7 @@ final class UrlBuilder
     public function generate(): string
     {
         $uri = new Uri($this->sourceUrl);
-        $assetHost = new Uri($this->assetUrl)->getHost();
+        $assetHost = (new Uri($this->assetUrl))->getHost();
         if ($assetHost !== '' && $assetHost !== '0') {
             $uri = $uri->withHost($assetHost);
         }

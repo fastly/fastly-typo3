@@ -41,7 +41,7 @@ final class VclFileResolverTest extends UnitTestCase
         $this->writeVcl($default, 'main.vcl', 'MAIN');
         $this->writeVcl($default, 'caching.vcl', 'CACHE');
 
-        $files = new VclFileResolver('', $default)->resolveFiles();
+        $files = (new VclFileResolver('', $default))->resolveFiles();
 
         $this->assertSame(['caching' => 'CACHE', 'main' => 'MAIN'], $files);
     }
@@ -54,7 +54,7 @@ final class VclFileResolverTest extends UnitTestCase
         $override = $this->makeDir();
         $this->writeVcl($override, 'caching.vcl', 'OVERRIDDEN');
 
-        $files = new VclFileResolver($override, $default)->resolveFiles();
+        $files = (new VclFileResolver($override, $default))->resolveFiles();
 
         $this->assertSame('OVERRIDDEN', $files['caching']);
         $this->assertSame('MAIN', $files['main'], 'unoverridden files keep the default content');
@@ -67,7 +67,7 @@ final class VclFileResolverTest extends UnitTestCase
         $override = $this->makeDir();
         $this->writeVcl($override, 'custom.vcl', 'CUSTOM');
 
-        $files = new VclFileResolver($override, $default)->resolveFiles();
+        $files = (new VclFileResolver($override, $default))->resolveFiles();
 
         $this->assertSame('CUSTOM', $files['custom']);
         $this->assertArrayHasKey('main', $files);
@@ -82,7 +82,7 @@ final class VclFileResolverTest extends UnitTestCase
         $high = $this->makeDir();
         $this->writeVcl($high, 'caching.vcl', 'HIGH');
 
-        $files = new VclFileResolver($low . ',' . $high, $default)->resolveFiles();
+        $files = (new VclFileResolver($low . ',' . $high, $default))->resolveFiles();
 
         $this->assertSame('HIGH', $files['caching']);
     }
@@ -93,7 +93,7 @@ final class VclFileResolverTest extends UnitTestCase
         $this->writeVcl($default, 'main.vcl', 'MAIN');
         $this->writeVcl($default, 'readme.txt', 'nope');
 
-        $files = new VclFileResolver(' , ,' . "\n", $default)->resolveFiles();
+        $files = (new VclFileResolver(' , ,' . "\n", $default))->resolveFiles();
 
         $this->assertSame(['main' => 'MAIN'], $files);
     }
@@ -103,7 +103,7 @@ final class VclFileResolverTest extends UnitTestCase
         $default = $this->makeDir();
         $this->writeVcl($default, 'main.vcl', 'MAIN');
 
-        $files = new VclFileResolver('/does/not/exist/anywhere', $default)->resolveFiles();
+        $files = (new VclFileResolver('/does/not/exist/anywhere', $default))->resolveFiles();
 
         $this->assertSame(['main' => 'MAIN'], $files);
     }

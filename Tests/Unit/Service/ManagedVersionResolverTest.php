@@ -42,7 +42,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
             ['number' => 2, 'active' => true, 'locked' => true],
         ]));
 
-        $this->assertSame(2, new ManagedVersionResolver($client)->resolveActiveVersion('svc'));
+        $this->assertSame(2, (new ManagedVersionResolver($client))->resolveActiveVersion('svc'));
     }
 
     public function testResolveActiveVersionFallsBackToLatestWhenNoneActive(): void
@@ -54,7 +54,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
             ['number' => 2, 'active' => false, 'locked' => true],
         ]));
 
-        $this->assertSame(3, new ManagedVersionResolver($client)->resolveActiveVersion('svc'));
+        $this->assertSame(3, (new ManagedVersionResolver($client))->resolveActiveVersion('svc'));
     }
 
     public function testResolveEditableVersionReturnsFirstUnlocked(): void
@@ -65,7 +65,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
             ['number' => 2, 'active' => false, 'locked' => false],
         ]));
 
-        $this->assertSame(2, new ManagedVersionResolver($client)->resolveEditableVersion('svc'));
+        $this->assertSame(2, (new ManagedVersionResolver($client))->resolveEditableVersion('svc'));
     }
 
     public function testResolveEditableVersionFallsBackToLatestWhenAllLocked(): void
@@ -76,7 +76,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
             ['number' => 2, 'active' => true, 'locked' => true],
         ]));
 
-        $this->assertSame(2, new ManagedVersionResolver($client)->resolveEditableVersion('svc'));
+        $this->assertSame(2, (new ManagedVersionResolver($client))->resolveEditableVersion('svc'));
     }
 
     public function testAcquireEditableDraftReusesHighestManagedDraftWithoutCloning(): void
@@ -91,7 +91,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
         $client->expects($this->never())->method('cloneServiceVersion');
         $client->expects($this->never())->method('updateServiceVersionComment');
 
-        $draft = new ManagedVersionResolver($client)->acquireEditableDraft('svc', 2);
+        $draft = (new ManagedVersionResolver($client))->acquireEditableDraft('svc', 2);
 
         $this->assertSame(['version' => 4, 'cloned' => false], $draft);
     }
@@ -110,7 +110,7 @@ final class ManagedVersionResolverTest extends UnitTestCase
             ->with('svc', 4, ManagedVersionResolver::MANAGED_VERSION_COMMENT)
             ->willReturn(new VersionResponse(['number' => 4]));
 
-        $draft = new ManagedVersionResolver($client)->acquireEditableDraft('svc', 2);
+        $draft = (new ManagedVersionResolver($client))->acquireEditableDraft('svc', 2);
 
         $this->assertSame(['version' => 4, 'cloned' => true], $draft);
     }
