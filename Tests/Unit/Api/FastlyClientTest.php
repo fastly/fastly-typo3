@@ -10,6 +10,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
 final class FastlyClientTest extends UnitTestCase
@@ -20,9 +21,9 @@ final class FastlyClientTest extends UnitTestCase
         $client = $this->buildClientWithHistory($history);
         $client->purgeByTag('my-cache-tag');
 
-        self::assertCount(1, $history);
+        $this->assertCount(1, $history);
         $request = $history[0]['request'];
-        self::assertStringContainsString('my-cache-tag', (string) $request->getUri());
+        $this->assertStringContainsString('my-cache-tag', (string) $request->getUri());
     }
 
     private function buildClientWithHistory(array &$container): FastlyClient
@@ -40,9 +41,10 @@ final class FastlyClientTest extends UnitTestCase
     {
         $stack = HandlerStack::create($mock);
         $stack->push(Middleware::history($container));
+
         $guzzle = new Client(['handler' => $stack]);
 
-        return new FastlyClient($guzzle, 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER');
+        return new FastlyClient($guzzle, $this->createStub(FrontendInterface::class), 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER');
     }
 
     public function testCreateCustomVclPostsNameContentAndMainFlag(): void
@@ -53,12 +55,12 @@ final class FastlyClientTest extends UnitTestCase
         $client->createCustomVcl('svc', 3, 'main', 'sub vcl_recv {}', true);
 
         $request = $history[0]['request'];
-        self::assertSame('POST', $request->getMethod());
-        self::assertSame('/service/svc/version/3/vcl', $request->getUri()->getPath());
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertSame('/service/svc/version/3/vcl', $request->getUri()->getPath());
         $body = urldecode((string) $request->getBody());
-        self::assertStringContainsString('name=main', $body);
-        self::assertStringContainsString('main=true', $body);
-        self::assertStringContainsString('sub vcl_recv', $body);
+        $this->assertStringContainsString('name=main', $body);
+        $this->assertStringContainsString('main=true', $body);
+        $this->assertStringContainsString('sub vcl_recv', $body);
     }
 
     public function testUpdateCustomVclPutsToNamedVclWithContent(): void
@@ -69,9 +71,9 @@ final class FastlyClientTest extends UnitTestCase
         $client->updateCustomVcl('svc', 3, 'caching', 'sub fastly_caching_fetch {}');
 
         $request = $history[0]['request'];
-        self::assertSame('PUT', $request->getMethod());
-        self::assertSame('/service/svc/version/3/vcl/caching', $request->getUri()->getPath());
-        self::assertStringContainsString('fastly_caching_fetch', urldecode((string) $request->getBody()));
+        $this->assertSame('PUT', $request->getMethod());
+        $this->assertSame('/service/svc/version/3/vcl/caching', $request->getUri()->getPath());
+        $this->assertStringContainsString('fastly_caching_fetch', urldecode((string) $request->getBody()));
     }
 
     public function testSetCustomVclMainPutsToMainEndpoint(): void
@@ -82,19 +84,19 @@ final class FastlyClientTest extends UnitTestCase
         $client->setCustomVclMain('svc', 3, 'main');
 
         $request = $history[0]['request'];
-        self::assertSame('PUT', $request->getMethod());
-        self::assertSame('/service/svc/version/3/vcl/main/main', $request->getUri()->getPath());
+        $this->assertSame('PUT', $request->getMethod());
+        $this->assertSame('/service/svc/version/3/vcl/main/main', $request->getUri()->getPath());
     }
 
     public function testGetCustomVclRawReturnsRawBody(): void
     {
         $history = [];
-        $client = $this->clientFromMock(new MockHandler([new Response(200, [], 'sub vcl_recv {}')]), $history);
+        $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"content":"sub vcl_recv {}"}')]), $history);
 
         $raw = $client->getCustomVclRaw('svc', 3, 'main');
 
-        self::assertSame('sub vcl_recv {}', $raw);
-        self::assertSame('/service/svc/version/3/vcl/main/download', $history[0]['request']->getUri()->getPath());
+        $this->assertSame('sub vcl_recv {}', $raw);
+        $this->assertSame('/service/svc/version/3/vcl/main', $history[0]['request']->getUri()->getPath());
     }
 
     public function testLintVclPostsContentToServiceLintEndpoint(): void
@@ -105,9 +107,9 @@ final class FastlyClientTest extends UnitTestCase
         $client->lintVcl('svc', 'sub vcl_recv {}');
 
         $request = $history[0]['request'];
-        self::assertSame('POST', $request->getMethod());
-        self::assertSame('/service/svc/lint', $request->getUri()->getPath());
-        self::assertStringContainsString('vcl_recv', urldecode((string) $request->getBody()));
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertSame('/service/svc/lint', $request->getUri()->getPath());
+        $this->assertStringContainsString('vcl_recv', urldecode((string) $request->getBody()));
     }
 
     public function testPurgeByTagDoesNotSendSoftPurgeHeader(): void
@@ -117,7 +119,7 @@ final class FastlyClientTest extends UnitTestCase
         $client->purgeByTag('any-tag');
 
         $request = $history[0]['request'];
-        self::assertSame('', $request->getHeaderLine('Fastly-Soft-Purge'));
+        $this->assertSame('', $request->getHeaderLine('Fastly-Soft-Purge'));
     }
 
     public function testPurgeByTagIncludesServiceId(): void
@@ -127,7 +129,7 @@ final class FastlyClientTest extends UnitTestCase
         $client->purgeByTag('some-tag');
 
         $request = $history[0]['request'];
-        self::assertStringContainsString('SVC_ID_PLACEHOLDER', (string) $request->getUri());
+        $this->assertStringContainsString('SVC_ID_PLACEHOLDER', (string) $request->getUri());
     }
 
     public function testPurgeAllSendsExactlyOneRequest(): void
@@ -136,10 +138,10 @@ final class FastlyClientTest extends UnitTestCase
         $client = $this->buildClientWithHistory($history);
         $client->purgeAll();
 
-        self::assertCount(1, $history);
+        $this->assertCount(1, $history);
         // The Fastly SDK's purgeAll() does not support Fastly-Soft-Purge header;
         // the fastly_soft_purge option is silently ignored for this operation.
-        self::assertStringContainsString('purge_all', (string) $history[0]['request']->getUri());
+        $this->assertStringContainsString('purge_all', (string) $history[0]['request']->getUri());
     }
 
     public function testPurgeAllIncludesServiceId(): void
@@ -149,6 +151,6 @@ final class FastlyClientTest extends UnitTestCase
         $client->purgeAll();
 
         $request = $history[0]['request'];
-        self::assertStringContainsString('SVC_ID_PLACEHOLDER', (string) $request->getUri());
+        $this->assertStringContainsString('SVC_ID_PLACEHOLDER', (string) $request->getUri());
     }
 }

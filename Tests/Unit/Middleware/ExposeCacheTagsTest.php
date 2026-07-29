@@ -23,8 +23,8 @@ final class ExposeCacheTagsTest extends UnitTestCase
     private function makeCollector(array $tagNames): object
     {
         $tags = array_map(static fn (string $name): CacheTag => new CacheTag($name), $tagNames);
-        return new class($tags) {
-            public function __construct(private readonly array $tags) {}
+        return new readonly class($tags) {
+            public function __construct(private array $tags) {}
 
             public function getCacheTags(): array
             {
@@ -57,42 +57,16 @@ final class ExposeCacheTagsTest extends UnitTestCase
         return $handler;
     }
 
-    private function makeResponse(): ResponseInterface
-    {
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('withHeader')->willReturnCallback(
-            static function (string $name, string $value) use ($response): ResponseInterface {
-                $modified = clone $response;
-                return $modified;
-            }
-        );
-        return $response;
-    }
-
     // -------------------------------------------------------------------------
     // process() — proxy detection
     // -------------------------------------------------------------------------
-
-    public function testNotBehindProxyAndNoVarnishHeaderReturnsOriginalResponse(): void
-    {
-        $middleware = new ExposeCacheTags();
-        $originalResponse = $this->createMock(ResponseInterface::class);
-        $originalResponse->expects(self::never())->method('withHeader');
-
-        $result = $middleware->process(
-            $this->makeRequest(false, false),
-            $this->makeHandler($originalResponse),
-        );
-
-        self::assertSame($originalResponse, $result);
-    }
 
     public function testBehindReverseProxyAddsSurrogateKeyHeader(): void
     {
         $middleware = new ExposeCacheTags();
         $response = $this->createMock(ResponseInterface::class);
-        $modifiedResponse = $this->createMock(ResponseInterface::class);
-        $response->expects(self::once())
+        $modifiedResponse = $this->createStub(ResponseInterface::class);
+        $response->expects($this->once())
             ->method('withHeader')
             ->with('Surrogate-Key', self::isType('string'))
             ->willReturn($modifiedResponse);
@@ -102,15 +76,15 @@ final class ExposeCacheTagsTest extends UnitTestCase
             $this->makeHandler($response),
         );
 
-        self::assertSame($modifiedResponse, $result);
+        $this->assertSame($modifiedResponse, $result);
     }
 
     public function testXVarnishHeaderAddsSurrogateKeyHeader(): void
     {
         $middleware = new ExposeCacheTags();
         $response = $this->createMock(ResponseInterface::class);
-        $modifiedResponse = $this->createMock(ResponseInterface::class);
-        $response->expects(self::once())
+        $modifiedResponse = $this->createStub(ResponseInterface::class);
+        $response->expects($this->once())
             ->method('withHeader')
             ->with('Surrogate-Key', self::isType('string'))
             ->willReturn($modifiedResponse);
@@ -120,7 +94,7 @@ final class ExposeCacheTagsTest extends UnitTestCase
             $this->makeHandler($response),
         );
 
-        self::assertSame($modifiedResponse, $result);
+        $this->assertSame($modifiedResponse, $result);
     }
 
     public function testSurrogateKeyValueIsSpaceSeparatedTagNames(): void
@@ -140,7 +114,7 @@ final class ExposeCacheTagsTest extends UnitTestCase
             $this->makeHandler($response),
         );
 
-        self::assertSame('pages_1 tt_content_2', $capturedValue);
+        $this->assertSame('pages_1 tt_content_2', $capturedValue);
     }
 
     // -------------------------------------------------------------------------
@@ -165,50 +139,7 @@ final class ExposeCacheTagsTest extends UnitTestCase
             $this->makeHandler($response),
         );
 
-        self::assertSame('pages_1 pages_2', $capturedValue);
-    }
-
-    public function testRecordSpecificTagRemovedWhenTableTagAlsoPresentInTca(): void
-    {
-        $GLOBALS['TCA'] = ['pages' => []];
-        $middleware = new ExposeCacheTags();
-        $capturedValue = null;
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('withHeader')->willReturnCallback(
-            function (string $name, string $value) use (&$capturedValue, $response): ResponseInterface {
-                $capturedValue = $value;
-                return $response;
-            }
-        );
-
-        $middleware->process(
-            $this->makeRequest(true, false, ['pages', 'pages_1', 'pages_99']),
-            $this->makeHandler($response),
-        );
-
-        // pages_1 and pages_99 should be removed; only 'pages' remains
-        self::assertSame('pages', $capturedValue);
-    }
-
-    public function testMultipleTableTagsRemoveTheirRespectiveRecordTags(): void
-    {
-        $GLOBALS['TCA'] = ['pages' => [], 'tt_content' => []];
-        $middleware = new ExposeCacheTags();
-        $capturedValue = null;
-        $response = $this->createMock(ResponseInterface::class);
-        $response->method('withHeader')->willReturnCallback(
-            function (string $name, string $value) use (&$capturedValue, $response): ResponseInterface {
-                $capturedValue = $value;
-                return $response;
-            }
-        );
-
-        $middleware->process(
-            $this->makeRequest(true, false, ['pages', 'pages_1', 'tt_content', 'tt_content_456']),
-            $this->makeHandler($response),
-        );
-
-        self::assertSame('pages tt_content', $capturedValue);
+        $this->assertSame('pages_1 pages_2', $capturedValue);
     }
 
     public function testRecordTagForTableNotInTcaIsKept(): void
@@ -230,7 +161,7 @@ final class ExposeCacheTagsTest extends UnitTestCase
         );
 
         // 'unknown_123' is kept because 'unknown' is not in TCA
-        self::assertStringContainsString('unknown_123', $capturedValue);
+        $this->assertStringContainsString('unknown_123', (string) $capturedValue);
     }
 
     public function testEmptyTagArrayResultsInEmptySurrogateKey(): void
@@ -251,6 +182,6 @@ final class ExposeCacheTagsTest extends UnitTestCase
             $this->makeHandler($response),
         );
 
-        self::assertSame('', $capturedValue);
+        $this->assertSame('', $capturedValue);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Tests\Unit\Api;
 
+use ReflectionClass;
 use Fastly\Cdn\Api\FastlyClientFactory;
 use GuzzleHttp\ClientInterface;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
@@ -27,16 +28,15 @@ final class FastlyClientFactoryTest extends UnitTestCase
 
     private function getClientConfig(ClientInterface $client): array
     {
-        $ref = new \ReflectionClass($client);
+        $ref = new ReflectionClass($client);
         $prop = $ref->getProperty('config');
-        $prop->setAccessible(true);
         return $prop->getValue($client);
     }
 
     public function testGetClientReturnsClientInterface(): void
     {
         $client = FastlyClientFactory::getClient();
-        self::assertInstanceOf(ClientInterface::class, $client);
+        $this->assertInstanceOf(ClientInterface::class, $client);
     }
 
     public function testBaseUriIsSetToFastlyApi(): void
@@ -44,7 +44,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertSame('https://api.fastly.com', (string) ($config['base_uri'] ?? ''));
+        $this->assertSame('https://api.fastly.com', (string) ($config['base_uri'] ?? ''));
     }
 
     public function testTimeoutIsEight(): void
@@ -52,7 +52,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertSame(8, $config['timeout'] ?? null);
+        $this->assertSame(8, $config['timeout'] ?? null);
     }
 
     public function testConnectTimeoutIsFive(): void
@@ -60,7 +60,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertSame(5, $config['connect_timeout'] ?? null);
+        $this->assertSame(5, $config['connect_timeout'] ?? null);
     }
 
     public function testUserAgentHeaderIsSet(): void
@@ -68,7 +68,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertSame('TYPO3 Api/1.0', $config['headers']['User-Agent'] ?? null);
+        $this->assertSame('TYPO3 Api/1.0', $config['headers']['User-Agent'] ?? null);
     }
 
     public function testAcceptHeaderIsApplicationJson(): void
@@ -76,7 +76,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertSame('application/json', $config['headers']['Accept'] ?? null);
+        $this->assertSame('application/json', $config['headers']['Accept'] ?? null);
     }
 
     public function testVerifyStringTrueIsCastToBoolean(): void
@@ -85,7 +85,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertTrue($config['verify']);
+        $this->assertTrue($config['verify']);
     }
 
     public function testVerifyStringFalseIsCastToBoolean(): void
@@ -94,7 +94,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertFalse($config['verify']);
+        $this->assertFalse($config['verify']);
     }
 
     public function testHandlerStackIsCreatedWhenHandlerArrayIsConfigured(): void
@@ -105,7 +105,7 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        self::assertArrayHasKey('handler', $config);
-        self::assertIsCallable($config['handler']);
+        $this->assertArrayHasKey('handler', $config);
+        $this->assertIsCallable($config['handler']);
     }
 }

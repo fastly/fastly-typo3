@@ -93,10 +93,10 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
         $processedFile->method('getProcessingConfiguration')->willReturn($processingConfiguration);
         $processedFile->method('getOriginalFile')->willReturn($sourceFile);
         $processedFile->method('getTaskIdentifier')->willReturn('Preview');
-        $processedFile->expects(self::once())->method('setName')->with('processed.jpg');
+        $processedFile->expects($this->once())->method('setName')->with('processed.jpg');
 
         $capturedProps = null;
-        $processedFile->expects(self::once())->method('updateProperties')->willReturnCallback(
+        $processedFile->expects($this->once())->method('updateProperties')->willReturnCallback(
             static function (array $props) use (&$capturedProps): void {
                 $capturedProps = $props;
             }
@@ -109,11 +109,11 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
         $task->method('getName')->willReturn('Preview');
         $task->method('getTargetFileName')->willReturn('processed.jpg');
         $task->method('getConfigurationChecksum')->willReturn('chk');
-        $task->expects(self::once())->method('setExecuted')->with(false);
+        $task->expects($this->once())->method('setExecuted')->with(false);
 
         $processor->processTask($task);
 
-        self::assertIsArray($capturedProps);
+        $this->assertIsArray($capturedProps);
         return $capturedProps;
     }
 
@@ -124,68 +124,68 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
     public function testCanProcessTaskReturnsFalseWhenDisabled(): void
     {
         $processor = $this->makeProcessor(enabled: false);
-        self::assertFalse($processor->canProcessTask($this->makeTask()));
+        $this->assertFalse($processor->canProcessTask($this->makeTask()));
     }
 
     public function testCanProcessTaskReturnsTrueForValidJpegPreviewTask(): void
     {
         $processor = $this->makeProcessor();
-        self::assertTrue($processor->canProcessTask($this->makeTask()));
+        $this->assertTrue($processor->canProcessTask($this->makeTask()));
     }
 
     public function testCanProcessTaskReturnsFalseForNonPublicStorage(): void
     {
         $processor = $this->makeProcessor();
-        self::assertFalse($processor->canProcessTask($this->makeTask(publicStorage: false)));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(publicStorage: false)));
     }
 
     public function testCanProcessTaskReturnsFalseForDisallowedExtension(): void
     {
         $processor = $this->makeProcessor();
-        self::assertFalse($processor->canProcessTask($this->makeTask(extension: 'svg')));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(extension: 'svg')));
     }
 
     public function testCanProcessTaskReturnsFalseForUnsupportedTaskName(): void
     {
         $processor = $this->makeProcessor();
-        self::assertFalse($processor->canProcessTask($this->makeTask(taskName: 'Scale')));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(taskName: 'Scale')));
     }
 
     public function testCanProcessTaskReturnsFalseWhenWidthIsZero(): void
     {
         $processor = $this->makeProcessor();
-        self::assertFalse($processor->canProcessTask($this->makeTask(width: 0)));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(width: 0)));
     }
 
     public function testCanProcessTaskReturnsFalseWhenHeightIsZero(): void
     {
         $processor = $this->makeProcessor();
-        self::assertFalse($processor->canProcessTask($this->makeTask(height: 0)));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(height: 0)));
     }
 
     public function testCanProcessTaskReturnsFalseWhenIgnoreAssetsAndAssetUrl(): void
     {
         $processor = $this->makeProcessor(ignoreAssets: true);
-        self::assertFalse($processor->canProcessTask($this->makeTask(publicUrl: '/_assets/hash/test.jpg')));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(publicUrl: '/_assets/hash/test.jpg')));
     }
 
     public function testCanProcessTaskReturnsTrueWhenIgnoreAssetsButNotAssetUrl(): void
     {
         $processor = $this->makeProcessor(ignoreAssets: true);
-        self::assertTrue($processor->canProcessTask($this->makeTask(publicUrl: '/fileadmin/test.jpg')));
+        $this->assertTrue($processor->canProcessTask($this->makeTask(publicUrl: '/fileadmin/test.jpg')));
     }
 
     public function testCanProcessTaskRespectsCropScaleMaskTaskName(): void
     {
         $processor = $this->makeProcessor();
-        self::assertTrue($processor->canProcessTask($this->makeTask(taskName: 'CropScaleMask')));
+        $this->assertTrue($processor->canProcessTask($this->makeTask(taskName: 'CropScaleMask')));
     }
 
     public function testCanProcessTaskWithCustomAllowedExtensions(): void
     {
         $processor = $this->makeProcessor(allowedExtensions: 'gif,bmp');
-        self::assertTrue($processor->canProcessTask($this->makeTask(extension: 'gif')));
-        self::assertFalse($processor->canProcessTask($this->makeTask(extension: 'jpg')));
+        $this->assertTrue($processor->canProcessTask($this->makeTask(extension: 'gif')));
+        $this->assertFalse($processor->canProcessTask($this->makeTask(extension: 'jpg')));
     }
 
     // -------------------------------------------------------------------------
@@ -226,12 +226,8 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
 
         $processor->processTask($task);
 
-        self::assertNotNull($capturedProps, 'updateProperties() must have been called');
-        self::assertStringContainsString(
-            '/fileadmin/img.jpg',
-            $capturedProps['processing_url'] ?? '',
-            'Processing URL must contain the source image path',
-        );
+        $this->assertNotNull($capturedProps, 'updateProperties() must have been called');
+        $this->assertStringContainsString('/fileadmin/img.jpg', (string) ($capturedProps['processing_url'] ?? ''), 'Processing URL must contain the source image path');
     }
 
     public function testGetPublicUrlDoesNotModifyAbsoluteUrl(): void
@@ -268,12 +264,8 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
 
         $processor->processTask($task);
 
-        self::assertNotNull($capturedProps, 'updateProperties() must have been called');
-        self::assertStringNotContainsString(
-            'cdn.example.com/https',
-            $capturedProps['processing_url'] ?? '',
-            'assetUrl must not be prepended to an already-absolute URL',
-        );
+        $this->assertNotNull($capturedProps, 'updateProperties() must have been called');
+        $this->assertStringNotContainsString('cdn.example.com/https', (string) ($capturedProps['processing_url'] ?? ''), 'assetUrl must not be prepended to an already-absolute URL');
     }
 
     public function testProcessTaskAllowsUpscalingWhenConfigured(): void
@@ -286,7 +278,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
             ['width' => '1000', 'height' => '800'],
         );
 
-        self::assertStringContainsString('enable=upscale', $properties['processing_url']);
+        $this->assertStringContainsString('enable=upscale', (string) $properties['processing_url']);
     }
 
     public function testProcessTaskFallsBackToGlobalJpegQualityWhenQualityIsEmpty(): void
@@ -295,7 +287,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
 
         $properties = $this->processTaskAndReturnProperties($processor);
 
-        self::assertStringContainsString('quality=75', $properties['processing_url']);
+        $this->assertStringContainsString('quality=75', (string) $properties['processing_url']);
     }
 
     public function testProcessTaskAppliesJsonCropConfiguration(): void
@@ -311,8 +303,8 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
             ],
         );
 
-        self::assertStringContainsString('precrop=300%2C150%2Cx10%2Cy20', $properties['processing_url']);
-        self::assertStringContainsString('fit=crop', $properties['processing_url']);
+        $this->assertStringContainsString('precrop=300%2C150%2Cx10%2Cy20', (string) $properties['processing_url']);
+        $this->assertStringContainsString('fit=crop', (string) $properties['processing_url']);
     }
 
     public function testProcessTaskAppliesAreaCropConfiguration(): void
@@ -328,8 +320,8 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
             ],
         );
 
-        self::assertStringContainsString('precrop=320%2C160%2Cx15%2Cy25', $properties['processing_url']);
-        self::assertStringContainsString('fit=crop', $properties['processing_url']);
+        $this->assertStringContainsString('precrop=320%2C160%2Cx15%2Cy25', (string) $properties['processing_url']);
+        $this->assertStringContainsString('fit=crop', (string) $properties['processing_url']);
     }
 
     public function testProcessTaskUsesCropFitWhenWidthRequestsCropScale(): void
@@ -341,7 +333,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
             ['width' => '200c', 'height' => '100'],
         );
 
-        self::assertStringContainsString('fit=crop', $properties['processing_url']);
+        $this->assertStringContainsString('fit=crop', (string) $properties['processing_url']);
     }
 
     // -------------------------------------------------------------------------
@@ -361,7 +353,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
         $processor = $this->makeProcessor(assetUrl: 'https://cdn.example.com');
         $result = $this->callGetPublicUrl($processor, '/fileadmin/img.jpg');
 
-        self::assertSame('https://cdn.example.com/fileadmin/img.jpg', $result);
+        $this->assertSame('https://cdn.example.com/fileadmin/img.jpg', $result);
     }
 
     public function testGetPublicUrlOfSourceFileDoesNotPrependToHttpUrl(): void
@@ -369,7 +361,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
         $processor = $this->makeProcessor(assetUrl: 'https://cdn.example.com');
         $result = $this->callGetPublicUrl($processor, 'http://remote.example.com/img.jpg');
 
-        self::assertSame('http://remote.example.com/img.jpg', $result);
+        $this->assertSame('http://remote.example.com/img.jpg', $result);
     }
 
     public function testGetPublicUrlOfSourceFileDoesNotPrependToHttpsUrl(): void
@@ -377,7 +369,7 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
         $processor = $this->makeProcessor(assetUrl: 'https://cdn.example.com');
         $result = $this->callGetPublicUrl($processor, 'https://remote.example.com/img.jpg');
 
-        self::assertSame('https://remote.example.com/img.jpg', $result);
+        $this->assertSame('https://remote.example.com/img.jpg', $result);
     }
 
     public function testGetPublicUrlOfSourceFileUsesRequestHostWhenAssetUrlEmpty(): void
@@ -387,8 +379,8 @@ final class ImageOptimizerProcessorTest extends UnitTestCase
             $processor = $this->makeProcessor(assetUrl: '');
             $result = $this->callGetPublicUrl($processor, '/fileadmin/img.jpg');
 
-            self::assertStringContainsString('test.typo3.local', $result);
-            self::assertStringContainsString('/fileadmin/img.jpg', $result);
+            $this->assertStringContainsString('test.typo3.local', $result);
+            $this->assertStringContainsString('/fileadmin/img.jpg', $result);
         } finally {
             unset($_SERVER['HTTP_HOST']);
         }

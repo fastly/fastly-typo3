@@ -29,14 +29,11 @@ final class EsiViewHelperTest extends UnitTestCase
      */
     private function makeViewHelper(?ServerRequestInterface $request = null): EsiViewHelper
     {
-        $variableProvider = $this->createMock(VariableProviderInterface::class);
-        $vhVariableContainer = $this->createMock(ViewHelperVariableContainer::class);
-
         $renderingContext = $this->createMock(RenderingContextInterface::class);
-        $renderingContext->method('getVariableProvider')->willReturn($variableProvider);
-        $renderingContext->method('getViewHelperVariableContainer')->willReturn($vhVariableContainer);
+        $renderingContext->method('getVariableProvider')->willReturn($this->createStub(VariableProviderInterface::class));
+        $renderingContext->method('getViewHelperVariableContainer')->willReturn($this->createStub(ViewHelperVariableContainer::class));
 
-        if ($request !== null) {
+        if ($request instanceof ServerRequestInterface) {
             $renderingContext->method('hasAttribute')
                 ->with(ServerRequestInterface::class)
                 ->willReturn(true);
@@ -78,14 +75,14 @@ final class EsiViewHelperTest extends UnitTestCase
 
         $result = $viewHelper->render();
 
-        self::assertStringContainsString('<esi:include', $result);
-        self::assertStringContainsString('src=', $result);
-        self::assertStringContainsString('/api/fragment', $result);
+        $this->assertStringContainsString('<esi:include', $result);
+        $this->assertStringContainsString('src=', $result);
+        $this->assertStringContainsString('/api/fragment', $result);
     }
 
     public function testRenderThrowsExceptionWhenNoRequestInContext(): void
     {
-        $viewHelper = $this->makeViewHelper(request: null);
+        $viewHelper = $this->makeViewHelper();
         $viewHelper->setArguments($this->defaultArguments(['src' => null]));
 
         $this->expectException(RuntimeException::class);
@@ -128,23 +125,23 @@ final class EsiViewHelperTest extends UnitTestCase
 
     public function testRenderWithExtbaseRequestUsesUriBuilder(): void
     {
-        $request = $this->createMock(ExtbaseRequestInterface::class);
+        $request = $this->createStub(ExtbaseRequestInterface::class);
         $uriBuilder = $this->createMock(ExtbaseUriBuilder::class);
-        $uriBuilder->expects(self::once())->method('reset')->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setRequest')->with($request)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setTargetPageType')->with(13)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setNoCache')->with(true)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setSection')->with('content')->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setLanguage')->with('2')->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setLinkAccessRestrictedPages')->with(true)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setArguments')->with(['tx_demo' => ['foo' => 'bar']])->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setCreateAbsoluteUri')->with(true)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setAddQueryString')->with('untrusted')->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setArgumentsToBeExcludedFromQueryString')
+        $uriBuilder->expects($this->once())->method('reset')->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setRequest')->with($request)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setTargetPageType')->with(13)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setNoCache')->with(true)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setSection')->with('content')->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setLanguage')->with('2')->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setLinkAccessRestrictedPages')->with(true)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setArguments')->with(['tx_demo' => ['foo' => 'bar']])->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setCreateAbsoluteUri')->with(true)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setAddQueryString')->with('untrusted')->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('setArgumentsToBeExcludedFromQueryString')
             ->with(['cHash'])
             ->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('setTargetPageUid')->with(123)->willReturnSelf();
-        $uriBuilder->expects(self::once())->method('build')->willReturn('/extbase/fragment');
+        $uriBuilder->expects($this->once())->method('setTargetPageUid')->with(123)->willReturnSelf();
+        $uriBuilder->expects($this->once())->method('build')->willReturn('/extbase/fragment');
         GeneralUtility::addInstance(ExtbaseUriBuilder::class, $uriBuilder);
 
         $viewHelper = $this->makeViewHelper($request);
@@ -163,13 +160,13 @@ final class EsiViewHelperTest extends UnitTestCase
 
         $result = $viewHelper->render();
 
-        self::assertStringContainsString('<esi:include', $result);
-        self::assertStringContainsString('/extbase/fragment', $result);
+        $this->assertStringContainsString('<esi:include', $result);
+        $this->assertStringContainsString('/extbase/fragment', $result);
     }
 
     public function testRenderReturnsEmptyStringWhenExtbaseUriBuilderBuildsEmptyUri(): void
     {
-        $request = $this->createMock(ExtbaseRequestInterface::class);
+        $request = $this->createStub(ExtbaseRequestInterface::class);
         $uriBuilder = $this->createMock(ExtbaseUriBuilder::class);
         $uriBuilder->method('reset')->willReturnSelf();
         $uriBuilder->method('setRequest')->willReturnSelf();
@@ -188,7 +185,7 @@ final class EsiViewHelperTest extends UnitTestCase
         $viewHelper = $this->makeViewHelper($request);
         $viewHelper->setArguments($this->defaultArguments());
 
-        self::assertSame('', $viewHelper->render());
+        $this->assertSame('', $viewHelper->render());
     }
 
     public function testRenderWithFrontendRequestBuildsTypolinkConfiguration(): void
@@ -198,25 +195,23 @@ final class EsiViewHelperTest extends UnitTestCase
             ->with('applicationType')
             ->willReturn(SystemEnvironmentBuilder::REQUESTTYPE_FE);
         $contentObject = $this->createMock(ContentObjectRenderer::class);
-        $contentObject->expects(self::once())->method('setRequest')->with($request);
+        $contentObject->expects($this->once())->method('setRequest')->with($request);
         GeneralUtility::addInstance(ContentObjectRenderer::class, $contentObject);
 
         $linkResult = $this->createMock(LinkResultInterface::class);
         $linkResult->method('getUrl')->willReturn('/frontend/fragment');
         $linkFactory = $this->createMock(LinkFactory::class);
-        $linkFactory->expects(self::once())->method('create')->with(
+        $linkFactory->expects($this->once())->method('create')->with(
             'children output',
-            self::callback(static function (array $configuration): bool {
-                return $configuration['parameter'] === '456,99'
-                    && $configuration['no_cache'] === 1
-                    && $configuration['language'] === 'current'
-                    && $configuration['section'] === 'teaser'
-                    && $configuration['linkAccessRestrictedPages'] === 1
-                    && $configuration['additionalParams'] === '&foo=bar&nested%5Bbaz%5D=qux'
-                    && $configuration['forceAbsoluteUrl'] === true
-                    && $configuration['addQueryString'] === 'untrusted'
-                    && $configuration['addQueryString.']['exclude'] === 'cHash,L';
-            }),
+            self::callback(static fn(array $configuration): bool => $configuration['parameter'] === '456,99'
+                && $configuration['no_cache'] === 1
+                && $configuration['language'] === 'current'
+                && $configuration['section'] === 'teaser'
+                && $configuration['linkAccessRestrictedPages'] === 1
+                && $configuration['additionalParams'] === '&foo=bar&nested%5Bbaz%5D=qux'
+                && $configuration['forceAbsoluteUrl'] === true
+                && $configuration['addQueryString'] === 'untrusted'
+                && $configuration['addQueryString.']['exclude'] === 'cHash,L'),
             $contentObject,
         )->willReturn($linkResult);
         GeneralUtility::addInstance(LinkFactory::class, $linkFactory);
@@ -238,7 +233,7 @@ final class EsiViewHelperTest extends UnitTestCase
 
         $result = $viewHelper->render();
 
-        self::assertStringContainsString('/frontend/fragment', $result);
+        $this->assertStringContainsString('/frontend/fragment', $result);
     }
 
     public function testRenderWithFrontendRequestFallsBackToChildrenWhenTypolinkFails(): void
@@ -248,22 +243,23 @@ final class EsiViewHelperTest extends UnitTestCase
             ->with('applicationType')
             ->willReturn(SystemEnvironmentBuilder::REQUESTTYPE_FE);
         $contentObject = $this->createMock(ContentObjectRenderer::class);
-        $contentObject->expects(self::once())->method('setRequest')->with($request);
+        $contentObject->expects($this->once())->method('setRequest')->with($request);
         GeneralUtility::addInstance(ContentObjectRenderer::class, $contentObject);
 
         $linkFactory = $this->createMock(LinkFactory::class);
-        $linkFactory->expects(self::once())->method('create')
+        $linkFactory->expects($this->once())->method('create')
             ->willThrowException(new UnableToLinkException('Unable to link'));
         GeneralUtility::addInstance(LinkFactory::class, $linkFactory);
 
         $viewHelper = $this->makeViewHelper($request);
         $viewHelper->setRenderChildrenClosure(static fn(): string => '/fallback/fragment');
+
         $arguments = $this->defaultArguments(['pageUid' => 456]);
         unset($arguments['argumentsToBeExcludedFromQueryString']);
         $viewHelper->setArguments($arguments);
 
         $result = $viewHelper->render();
 
-        self::assertStringContainsString('/fallback/fragment', $result);
+        $this->assertStringContainsString('/fallback/fragment', $result);
     }
 }

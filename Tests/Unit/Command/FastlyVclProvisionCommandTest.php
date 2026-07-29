@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Tests\Unit\Command;
 
+use Fastly\Model\VclResponse;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Command\FastlyVclProvisionCommand;
+use Fastly\Cdn\Service\FlushService;
 use Fastly\Cdn\Service\ManagedVersionResolver;
 use Fastly\Cdn\Service\VclFileResolver;
 use Fastly\Cdn\Service\VclProvisioner;
@@ -14,6 +16,7 @@ use Fastly\Model\SchemasVersionResponse;
 use Fastly\Model\Version;
 use Fastly\Model\VersionResponse;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
@@ -32,7 +35,7 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->root . '/*') ?: []);
+        array_map(unlink(...), glob($this->root . '/*') ?: []);
         @rmdir($this->root);
         parent::tearDown();
     }
@@ -50,6 +53,7 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
         $command = new FastlyVclProvisionCommand(
             $client,
             new VclProvisioner($client, new ManagedVersionResolver($client), new VclFileResolver('', $this->root)),
+            new FlushService($client, $this->createStub(LoggerInterface::class)),
         );
 
         return new CommandTester($command);
@@ -59,13 +63,13 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
     {
         $client = $this->client();
         $client->method('getConfiguredServiceId')->willReturn('');
-        $client->expects(self::never())->method('listServiceVersions');
+        $client->expects($this->never())->method('listServiceVersions');
 
         $tester = $this->tester($client);
         $tester->execute([]);
 
-        self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('service ID', $tester->getDisplay());
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('service ID', $tester->getDisplay());
     }
 
     public function testReportsApiFailureAsCleanFailure(): void
@@ -76,8 +80,8 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc']);
 
-        self::assertSame(Command::FAILURE, $tester->getStatusCode());
-        self::assertStringContainsString('boom', $tester->getDisplay());
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertStringContainsString('boom', $tester->getDisplay());
     }
 
     public function testProvisionsUploadsAndActivates(): void
@@ -89,16 +93,16 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
         $client->method('getCustomVclRaw')->willThrowException(new ApiException('not found', 404));
         $client->method('cloneServiceVersion')->willReturn(new Version(['number' => 3]));
         $client->method('updateServiceVersionComment')->willReturn(new VersionResponse(['number' => 3]));
-        $client->method('createCustomVcl')->willReturn($this->createStub(\Fastly\Model\VclResponse::class));
-        $client->method('setCustomVclMain')->willReturn($this->createStub(\Fastly\Model\VclResponse::class));
-        $client->expects(self::once())->method('activateServiceVersion')->with('svc', 3)
+        $client->method('createCustomVcl')->willReturn($this->createStub(VclResponse::class));
+        $client->method('setCustomVclMain')->willReturn($this->createStub(VclResponse::class));
+        $client->expects($this->once())->method('activateServiceVersion')->with('svc', 3)
             ->willReturn(new VersionResponse(['number' => 3]));
 
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc']);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        self::assertStringContainsString('main', $tester->getDisplay());
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertStringContainsString('main', $tester->getDisplay());
     }
 
     public function testDryRunPerformsNoWrites(): void
@@ -108,13 +112,13 @@ final class FastlyVclProvisionCommandTest extends UnitTestCase
             new SchemasVersionResponse(['number' => 2, 'active' => true, 'locked' => true]),
         ]);
         $client->method('getCustomVclRaw')->willThrowException(new ApiException('not found', 404));
-        $client->expects(self::never())->method('cloneServiceVersion');
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('activateServiceVersion');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('activateServiceVersion');
 
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc', '--dry-run' => true]);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
     }
 }

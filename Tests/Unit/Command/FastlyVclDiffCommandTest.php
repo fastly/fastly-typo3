@@ -31,7 +31,7 @@ final class FastlyVclDiffCommandTest extends UnitTestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->root . '/*') ?: []);
+        array_map(unlink(...), glob($this->root . '/*') ?: []);
         @rmdir($this->root);
         parent::tearDown();
     }
@@ -62,25 +62,23 @@ final class FastlyVclDiffCommandTest extends UnitTestCase
         ]);
         // main exists and matches; caching exists but differs; (none missing here)
         $client->method('getCustomVclRaw')->willReturnCallback(
-            function (string $s, int $v, string $n): string {
-                return $n === 'main' ? 'MAIN' : 'OLD';
-            },
+            fn(string $s, int $v, string $n): string => $n === 'main' ? 'MAIN' : 'OLD',
         );
-        $client->expects(self::never())->method('cloneServiceVersion');
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('updateCustomVcl');
-        $client->expects(self::never())->method('activateServiceVersion');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('updateCustomVcl');
+        $client->expects($this->never())->method('activateServiceVersion');
 
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc']);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
         $display = $tester->getDisplay();
-        self::assertStringContainsString('caching', $display);
-        self::assertStringContainsString('main', $display);
+        $this->assertStringContainsString('caching', $display);
+        $this->assertStringContainsString('main', $display);
     }
 
-    public function testReportsMissingFilesAsAdded(): void
+    public function testReportsMissingFilesAsCreate(): void
     {
         $client = $this->client();
         $client->method('listServiceVersions')->willReturn([
@@ -91,7 +89,7 @@ final class FastlyVclDiffCommandTest extends UnitTestCase
         $tester = $this->tester($client);
         $tester->execute(['--service-id' => 'svc']);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-        self::assertStringContainsString('added', $tester->getDisplay());
+        $this->assertSame(Command::SUCCESS, $tester->getStatusCode());
+        $this->assertStringContainsString('create', $tester->getDisplay());
     }
 }

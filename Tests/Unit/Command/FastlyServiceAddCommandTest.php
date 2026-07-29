@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Tests\Unit\Command;
 
+use InvalidArgumentException;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Command\FastlyServiceAddCommand;
@@ -51,13 +52,13 @@ final class FastlyServiceAddCommandTest extends UnitTestCase
     public function testReportsNonApiExceptionAsCleanFailure(): void
     {
         $client = $this->createMock(FastlyClientInterface::class);
-        $client->method('createService')->willThrowException(new \InvalidArgumentException('missing parameter'));
+        $client->method('createService')->willThrowException(new InvalidArgumentException('missing parameter'));
 
         $tester = $this->tester($client);
         $exitCode = $tester->execute([]);
 
-        self::assertSame(Command::FAILURE, $exitCode);
-        self::assertStringContainsString('missing parameter', $tester->getDisplay());
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('missing parameter', $tester->getDisplay());
     }
 
     public function testReportsApiExceptionAsCleanFailure(): void
@@ -68,7 +69,7 @@ final class FastlyServiceAddCommandTest extends UnitTestCase
         $tester = $this->tester($client);
         $exitCode = $tester->execute([]);
 
-        self::assertSame(Command::FAILURE, $exitCode);
-        self::assertStringContainsString('unauthorized', $tester->getDisplay());
+        $this->assertSame(Command::FAILURE, $exitCode);
+        $this->assertStringContainsString('unauthorized', $tester->getDisplay());
     }
 }

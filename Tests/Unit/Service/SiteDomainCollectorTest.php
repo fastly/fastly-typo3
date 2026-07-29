@@ -56,7 +56,7 @@ final class SiteDomainCollectorTest extends UnitTestCase
             ]),
         ]);
 
-        self::assertSame(['fr.example.com', 'www.example.com'], $collector->collectDomains());
+        $this->assertSame(['fr.example.com', 'www.example.com'], $collector->collectDomains());
     }
 
     public function testLanguageWithoutHostFallsBackToSiteHost(): void
@@ -65,7 +65,7 @@ final class SiteDomainCollectorTest extends UnitTestCase
             $this->site('https://www.example.com/', ['/en/']),
         ]);
 
-        self::assertSame(['www.example.com'], $collector->collectDomains());
+        $this->assertSame(['www.example.com'], $collector->collectDomains());
     }
 
     public function testNormalizesHostCaseAndTrailingDot(): void
@@ -74,7 +74,7 @@ final class SiteDomainCollectorTest extends UnitTestCase
             $this->site('https://WWW.Example.COM./', []),
         ]);
 
-        self::assertSame(['www.example.com'], $collector->collectDomains());
+        $this->assertSame(['www.example.com'], $collector->collectDomains());
     }
 
     public function testReturnsEmptyWhenNoHostsConfigured(): void
@@ -83,7 +83,7 @@ final class SiteDomainCollectorTest extends UnitTestCase
             $this->site('/', ['/en/']),
         ]);
 
-        self::assertSame([], $collector->collectDomains());
+        $this->assertSame([], $collector->collectDomains());
     }
 
     public function testMergesAndSortsHostsAcrossSites(): void
@@ -93,9 +93,6 @@ final class SiteDomainCollectorTest extends UnitTestCase
             $this->site('https://alpha.example.com/', ['https://beta.example.com/']),
         ]);
 
-        self::assertSame(
-            ['alpha.example.com', 'beta.example.com', 'zeta.example.com'],
-            $collector->collectDomains(),
-        );
+        $this->assertSame(['alpha.example.com', 'beta.example.com', 'zeta.example.com'], $collector->collectDomains());
     }
 }

@@ -168,7 +168,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
             'version_id' => $version,
             'vcl_name' => $name,
         ]);
-        return $result->getContent();
+        return $result->getContent() ?? '';
     }
 
     public function createCustomVcl(string $serviceId, int $version, string $name, string $content, bool $main = false): VclResponse

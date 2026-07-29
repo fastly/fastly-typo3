@@ -28,9 +28,10 @@ final class VclFileResolverTest extends UnitTestCase
     protected function tearDown(): void
     {
         foreach ($this->dirs as $dir) {
-            array_map('unlink', glob($dir . '/*') ?: []);
+            array_map(unlink(...), glob($dir . '/*') ?: []);
             @rmdir($dir);
         }
+
         parent::tearDown();
     }
 
@@ -40,9 +41,9 @@ final class VclFileResolverTest extends UnitTestCase
         $this->writeVcl($default, 'main.vcl', 'MAIN');
         $this->writeVcl($default, 'caching.vcl', 'CACHE');
 
-        $files = (new VclFileResolver('', $default))->resolveFiles();
+        $files = new VclFileResolver('', $default)->resolveFiles();
 
-        self::assertSame(['caching' => 'CACHE', 'main' => 'MAIN'], $files);
+        $this->assertSame(['caching' => 'CACHE', 'main' => 'MAIN'], $files);
     }
 
     public function testOverrideRootReplacesFileContent(): void
@@ -53,10 +54,10 @@ final class VclFileResolverTest extends UnitTestCase
         $override = $this->makeDir();
         $this->writeVcl($override, 'caching.vcl', 'OVERRIDDEN');
 
-        $files = (new VclFileResolver($override, $default))->resolveFiles();
+        $files = new VclFileResolver($override, $default)->resolveFiles();
 
-        self::assertSame('OVERRIDDEN', $files['caching']);
-        self::assertSame('MAIN', $files['main'], 'unoverridden files keep the default content');
+        $this->assertSame('OVERRIDDEN', $files['caching']);
+        $this->assertSame('MAIN', $files['main'], 'unoverridden files keep the default content');
     }
 
     public function testOverrideRootCanAddNewFile(): void
@@ -66,10 +67,10 @@ final class VclFileResolverTest extends UnitTestCase
         $override = $this->makeDir();
         $this->writeVcl($override, 'custom.vcl', 'CUSTOM');
 
-        $files = (new VclFileResolver($override, $default))->resolveFiles();
+        $files = new VclFileResolver($override, $default)->resolveFiles();
 
-        self::assertSame('CUSTOM', $files['custom']);
-        self::assertArrayHasKey('main', $files);
+        $this->assertSame('CUSTOM', $files['custom']);
+        $this->assertArrayHasKey('main', $files);
     }
 
     public function testLaterConfiguredRootWinsOverEarlierAndDefault(): void
@@ -81,9 +82,9 @@ final class VclFileResolverTest extends UnitTestCase
         $high = $this->makeDir();
         $this->writeVcl($high, 'caching.vcl', 'HIGH');
 
-        $files = (new VclFileResolver($low . ',' . $high, $default))->resolveFiles();
+        $files = new VclFileResolver($low . ',' . $high, $default)->resolveFiles();
 
-        self::assertSame('HIGH', $files['caching']);
+        $this->assertSame('HIGH', $files['caching']);
     }
 
     public function testIgnoresNonVclFilesAndBlankConfigEntries(): void
@@ -92,9 +93,9 @@ final class VclFileResolverTest extends UnitTestCase
         $this->writeVcl($default, 'main.vcl', 'MAIN');
         $this->writeVcl($default, 'readme.txt', 'nope');
 
-        $files = (new VclFileResolver(' , ,' . "\n", $default))->resolveFiles();
+        $files = new VclFileResolver(' , ,' . "\n", $default)->resolveFiles();
 
-        self::assertSame(['main' => 'MAIN'], $files);
+        $this->assertSame(['main' => 'MAIN'], $files);
     }
 
     public function testNonExistentConfiguredRootIsSkipped(): void
@@ -102,8 +103,8 @@ final class VclFileResolverTest extends UnitTestCase
         $default = $this->makeDir();
         $this->writeVcl($default, 'main.vcl', 'MAIN');
 
-        $files = (new VclFileResolver('/does/not/exist/anywhere', $default))->resolveFiles();
+        $files = new VclFileResolver('/does/not/exist/anywhere', $default)->resolveFiles();
 
-        self::assertSame(['main' => 'MAIN'], $files);
+        $this->assertSame(['main' => 'MAIN'], $files);
     }
 }

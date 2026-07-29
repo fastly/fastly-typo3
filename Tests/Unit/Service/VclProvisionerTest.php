@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Tests\Unit\Service;
 
+use PHPUnit\Framework\MockObject\Stub;
+use Fastly\Model\VclResponse;
 use Fastly\ApiException;
 use Fastly\Cdn\Api\FastlyClientInterface;
 use Fastly\Cdn\Exception\VclProvisioningException;
@@ -29,7 +31,7 @@ final class VclProvisionerTest extends UnitTestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->root . '/*') ?: []);
+        array_map(unlink(...), glob($this->root . '/*') ?: []);
         @rmdir($this->root);
         parent::tearDown();
     }
@@ -79,6 +81,7 @@ final class VclProvisionerTest extends UnitTestCase
                 if (!array_key_exists($key, $map)) {
                     throw new ApiException('not found', 404);
                 }
+
                 return $map[$key];
             },
         );
@@ -95,34 +98,34 @@ final class VclProvisionerTest extends UnitTestCase
         ]));
         $this->remote($client, []); // nothing on the service yet
 
-        $client->expects(self::once())->method('cloneServiceVersion')->with('svc', 2)
+        $client->expects($this->once())->method('cloneServiceVersion')->with('svc', 2)
             ->willReturn(new Version(['number' => 3]));
         $client->method('updateServiceVersionComment')->willReturn(new VersionResponse(['number' => 3]));
 
         $created = [];
         $mainFlag = [];
         $client->method('createCustomVcl')->willReturnCallback(
-            function (string $s, int $v, string $n, string $c, bool $main) use (&$created, &$mainFlag) {
+            function (string $s, int $v, string $n, string $c, bool $main) use (&$created, &$mainFlag): Stub {
                 $created[] = $n;
                 $mainFlag[$n] = $main;
-                return $this->createStub(\Fastly\Model\VclResponse::class);
+                return $this->createStub(VclResponse::class);
             },
         );
-        $client->expects(self::once())->method('setCustomVclMain')->with('svc', 3, 'main')
-            ->willReturn($this->createStub(\Fastly\Model\VclResponse::class));
-        $client->expects(self::once())->method('activateServiceVersion')->with('svc', 3)
+        $client->expects($this->once())->method('setCustomVclMain')->with('svc', 3, 'main')
+            ->willReturn($this->createStub(VclResponse::class));
+        $client->expects($this->once())->method('activateServiceVersion')->with('svc', 3)
             ->willReturn(new VersionResponse(['number' => 3]));
-        $client->expects(self::never())->method('updateCustomVcl');
+        $client->expects($this->never())->method('updateCustomVcl');
 
         $result = $this->provisioner($client)->provision('svc', true);
 
-        self::assertSame(3, $result['version']);
-        self::assertTrue($result['cloned']);
-        self::assertTrue($result['activated']);
-        self::assertSame(['caching', 'main'], $result['created']);
-        self::assertSame([], $result['updated']);
-        self::assertTrue($mainFlag['main'], 'main.vcl must be created with the main flag');
-        self::assertFalse($mainFlag['caching']);
+        $this->assertSame(3, $result['version']);
+        $this->assertTrue($result['cloned']);
+        $this->assertTrue($result['activated']);
+        $this->assertSame(['caching', 'main'], $result['created']);
+        $this->assertSame([], $result['updated']);
+        $this->assertTrue($mainFlag['main'], 'main.vcl must be created with the main flag');
+        $this->assertFalse($mainFlag['caching']);
     }
 
     public function testRerunWithNoChangesMakesNoWrites(): void
@@ -136,20 +139,20 @@ final class VclProvisionerTest extends UnitTestCase
         ]));
         $this->remote($client, ['2:main' => 'MAIN', '2:caching' => 'CACHE']);
 
-        $client->expects(self::never())->method('cloneServiceVersion');
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('updateCustomVcl');
-        $client->expects(self::never())->method('setCustomVclMain');
-        $client->expects(self::never())->method('activateServiceVersion');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('updateCustomVcl');
+        $client->expects($this->never())->method('setCustomVclMain');
+        $client->expects($this->never())->method('activateServiceVersion');
 
         $result = $this->provisioner($client)->provision('svc', true);
 
-        self::assertSame(2, $result['version']);
-        self::assertFalse($result['cloned']);
-        self::assertFalse($result['activated']);
-        self::assertSame(['caching', 'main'], $result['unchanged']);
-        self::assertSame([], $result['created']);
-        self::assertSame([], $result['updated']);
+        $this->assertSame(2, $result['version']);
+        $this->assertFalse($result['cloned']);
+        $this->assertFalse($result['activated']);
+        $this->assertSame(['caching', 'main'], $result['unchanged']);
+        $this->assertSame([], $result['created']);
+        $this->assertSame([], $result['updated']);
     }
 
     public function testOnlyChangedFileIsUpdated(): void
@@ -163,28 +166,28 @@ final class VclProvisionerTest extends UnitTestCase
         ]));
         $this->remote($client, ['2:main' => 'MAIN', '2:caching' => 'OLD']);
 
-        $client->expects(self::once())->method('cloneServiceVersion')->with('svc', 2)
+        $client->expects($this->once())->method('cloneServiceVersion')->with('svc', 2)
             ->willReturn(new Version(['number' => 3]));
         $client->method('updateServiceVersionComment')->willReturn(new VersionResponse(['number' => 3]));
 
         $updated = [];
         $client->method('updateCustomVcl')->willReturnCallback(
-            function (string $s, int $v, string $n, string $c) use (&$updated) {
+            function (string $s, int $v, string $n, string $c) use (&$updated): Stub {
                 $updated[] = $n;
-                return $this->createStub(\Fastly\Model\VclResponse::class);
+                return $this->createStub(VclResponse::class);
             },
         );
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('setCustomVclMain'); // main unchanged, flag persists on clone
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('setCustomVclMain'); // main unchanged, flag persists on clone
         $client->method('activateServiceVersion')->willReturn(new VersionResponse(['number' => 3]));
 
         $result = $this->provisioner($client)->provision('svc', true);
 
-        self::assertSame(['caching'], $updated);
-        self::assertSame(['caching'], $result['updated']);
-        self::assertSame([], $result['created']);
-        self::assertSame(['main'], $result['unchanged']);
-        self::assertTrue($result['activated']);
+        $this->assertSame(['caching'], $updated);
+        $this->assertSame(['caching'], $result['updated']);
+        $this->assertSame([], $result['created']);
+        $this->assertSame(['main'], $result['unchanged']);
+        $this->assertTrue($result['activated']);
     }
 
     public function testDryRunReportsPlanWithoutWrites(): void
@@ -198,17 +201,17 @@ final class VclProvisionerTest extends UnitTestCase
         ]));
         $this->remote($client, []); // all missing
 
-        $client->expects(self::never())->method('cloneServiceVersion');
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('updateCustomVcl');
-        $client->expects(self::never())->method('setCustomVclMain');
-        $client->expects(self::never())->method('activateServiceVersion');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('updateCustomVcl');
+        $client->expects($this->never())->method('setCustomVclMain');
+        $client->expects($this->never())->method('activateServiceVersion');
 
         $result = $this->provisioner($client)->provision('svc', true, true);
 
-        self::assertSame(['caching', 'main'], $result['created']);
-        self::assertFalse($result['cloned']);
-        self::assertFalse($result['activated']);
+        $this->assertSame(['caching', 'main'], $result['created']);
+        $this->assertFalse($result['cloned']);
+        $this->assertFalse($result['activated']);
     }
 
     public function testReusesManagedDraftUnderNoActivateWithoutRewritingWhenInSync(): void
@@ -224,17 +227,17 @@ final class VclProvisionerTest extends UnitTestCase
         // The managed draft (3) already carries the desired content.
         $this->remote($client, ['3:main' => 'MAIN', '3:caching' => 'CACHE']);
 
-        $client->expects(self::never())->method('cloneServiceVersion');
-        $client->expects(self::never())->method('createCustomVcl');
-        $client->expects(self::never())->method('updateCustomVcl');
-        $client->expects(self::never())->method('activateServiceVersion');
+        $client->expects($this->never())->method('cloneServiceVersion');
+        $client->expects($this->never())->method('createCustomVcl');
+        $client->expects($this->never())->method('updateCustomVcl');
+        $client->expects($this->never())->method('activateServiceVersion');
 
         $result = $this->provisioner($client)->provision('svc', false);
 
-        self::assertSame(3, $result['version']);
-        self::assertFalse($result['cloned']);
-        self::assertFalse($result['activated']);
-        self::assertSame(['caching', 'main'], $result['unchanged']);
+        $this->assertSame(3, $result['version']);
+        $this->assertFalse($result['cloned']);
+        $this->assertFalse($result['activated']);
+        $this->assertSame(['caching', 'main'], $result['unchanged']);
     }
 
     public function testThrowsWhenNoMainFilePresent(): void

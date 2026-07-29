@@ -14,14 +14,14 @@ final class UrlBuilderTest extends UnitTestCase
         return new UrlBuilder('https://cdn.example.com');
     }
 
-    public function testGenerateDefaultsToFitBoundsAndFormatAuto(): void
+    public function testGenerateDefaultsToFitBounds(): void
     {
         $url = $this->builder()->setSourceUrl('/images/photo.jpg')->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('bounds', $params['fit']);
-        self::assertSame('auto', $params['format']);
-        self::assertArrayNotHasKey('enable', $params);
+        $this->assertSame('bounds', $params['fit']);
+        $this->assertArrayNotHasKey('format', $params);
+        $this->assertArrayNotHasKey('enable', $params);
     }
 
     public function testGenerateWithResizeTypeSetsFitCrop(): void
@@ -32,8 +32,8 @@ final class UrlBuilderTest extends UnitTestCase
             ->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('crop', $params['fit']);
-        self::assertArrayNotHasKey('enable', $params);
+        $this->assertSame('crop', $params['fit']);
+        $this->assertArrayNotHasKey('enable', $params);
     }
 
     public function testGenerateWithAllowUpscalingSetsBoundsAndEnableUpscale(): void
@@ -44,8 +44,8 @@ final class UrlBuilderTest extends UnitTestCase
             ->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('bounds', $params['fit']);
-        self::assertSame('upscale', $params['enable']);
+        $this->assertSame('bounds', $params['fit']);
+        $this->assertSame('upscale', $params['enable']);
     }
 
     public function testSetWidthAndHeightAppearInQuery(): void
@@ -57,8 +57,8 @@ final class UrlBuilderTest extends UnitTestCase
             ->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('200', $params['width']);
-        self::assertSame('100', $params['height']);
+        $this->assertSame('200', $params['width']);
+        $this->assertSame('100', $params['height']);
     }
 
     public function testSetCropEncodesCorrectPrecropString(): void
@@ -69,7 +69,7 @@ final class UrlBuilderTest extends UnitTestCase
             ->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('400,300,x10,y20', $params['precrop']);
+        $this->assertSame('400,300,x10,y20', $params['precrop']);
     }
 
     public function testSetQualityWithInteger(): void
@@ -77,7 +77,7 @@ final class UrlBuilderTest extends UnitTestCase
         $url = $this->builder()->setSourceUrl('/img.jpg')->setQuality(85)->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('85', $params['quality']);
+        $this->assertSame('85', $params['quality']);
     }
 
     public function testSetQualityWithString(): void
@@ -85,7 +85,7 @@ final class UrlBuilderTest extends UnitTestCase
         $url = $this->builder()->setSourceUrl('/img.jpg')->setQuality('85,75')->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('85,75', $params['quality']);
+        $this->assertSame('85,75', $params['quality']);
     }
 
     public function testSetFormatOverridesAutoDefault(): void
@@ -93,7 +93,7 @@ final class UrlBuilderTest extends UnitTestCase
         $url = $this->builder()->setSourceUrl('/img.jpg')->setFormat('webp')->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('webp', $params['format']);
+        $this->assertSame('webp', $params['format']);
     }
 
     public function testSetCacheBusterSetsCbParam(): void
@@ -101,7 +101,7 @@ final class UrlBuilderTest extends UnitTestCase
         $url = $this->builder()->setSourceUrl('/img.jpg')->setCacheBuster('abc123')->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('abc123', $params['cb']);
+        $this->assertSame('abc123', $params['cb']);
     }
 
     public function testEnableAutoWebpSetsAutoParam(): void
@@ -109,38 +109,38 @@ final class UrlBuilderTest extends UnitTestCase
         $url = $this->builder()->setSourceUrl('/img.jpg')->enableAutoWebp()->generate();
         parse_str(parse_url($url, PHP_URL_QUERY), $params);
 
-        self::assertSame('webp', $params['auto']);
+        $this->assertSame('webp', $params['auto']);
     }
 
-    public function testSourceUrlPathIsExtractedFromFullUrl(): void
+    public function testSourceUrlHostIsRewrittenToAssetHost(): void
     {
         $url = $this->builder()
             ->setSourceUrl('https://cdn.example.com/images/foo.jpg')
             ->generate();
 
-        self::assertStringStartsWith('/images/foo.jpg?', $url);
+        $this->assertStringStartsWith('https://cdn.example.com/images/foo.jpg?', $url);
     }
 
     public function testFluentInterfaceReturnsSameInstance(): void
     {
         $builder = $this->builder();
 
-        self::assertSame($builder, $builder->setSourceUrl('/img.jpg'));
-        self::assertSame($builder, $builder->setWidth(100));
-        self::assertSame($builder, $builder->setHeight(100));
-        self::assertSame($builder, $builder->setQuality(80));
-        self::assertSame($builder, $builder->setFormat('jpeg'));
-        self::assertSame($builder, $builder->setCacheBuster('x'));
-        self::assertSame($builder, $builder->allowUpscaling());
-        self::assertSame($builder, $builder->enableAutoWebp());
-        self::assertSame($builder, $builder->setResizeType('crop'));
-        self::assertSame($builder, $builder->setCrop(100.0, 100.0, 0.0, 0.0));
+        $this->assertSame($builder, $builder->setSourceUrl('/img.jpg'));
+        $this->assertSame($builder, $builder->setWidth(100));
+        $this->assertSame($builder, $builder->setHeight(100));
+        $this->assertSame($builder, $builder->setQuality(80));
+        $this->assertSame($builder, $builder->setFormat('jpeg'));
+        $this->assertSame($builder, $builder->setCacheBuster('x'));
+        $this->assertSame($builder, $builder->allowUpscaling());
+        $this->assertSame($builder, $builder->enableAutoWebp());
+        $this->assertSame($builder, $builder->setResizeType('crop'));
+        $this->assertSame($builder, $builder->setCrop(100.0, 100.0, 0.0, 0.0));
     }
 
-    public function testGeneratePathOnlyFromRelativeSourceUrl(): void
+    public function testRelativeSourceUrlGetsAssetHostPrepended(): void
     {
         $url = $this->builder()->setSourceUrl('/fileadmin/img.jpg')->generate();
 
-        self::assertStringStartsWith('/fileadmin/img.jpg?', $url);
+        $this->assertStringStartsWith('//cdn.example.com/fileadmin/img.jpg?', $url);
     }
 }

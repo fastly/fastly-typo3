@@ -13,6 +13,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -37,14 +38,16 @@ final class FastlyBackendTest extends UnitTestCase
         $mock = new MockHandler($responses);
         $stack = HandlerStack::create($mock);
         $stack->push(Middleware::history($this->requestHistory));
+
         $fastlyClient = new FastlyClient(
             new Client(['handler' => $stack]),
+            $this->createStub(FrontendInterface::class),
             'API_TOKEN_PLACEHOLDER',
             'SVC_ID_PLACEHOLDER',
         );
         $flushService = new FlushService(
             $fastlyClient,
-            $this->createMock(LoggerInterface::class),
+            $this->createStub(LoggerInterface::class),
             true,
         );
         // FlushService implements SingletonInterface; setSingletonInstance() registers it
@@ -59,8 +62,8 @@ final class FastlyBackendTest extends UnitTestCase
         $backend = $this->createBackend();
         $backend->flush();
 
-        self::assertCount(1, $this->requestHistory);
-        self::assertStringContainsString('purge_all', (string) $this->requestHistory[0]['request']->getUri());
+        $this->assertCount(1, $this->requestHistory);
+        $this->assertStringContainsString('purge_all', (string) $this->requestHistory[0]['request']->getUri());
     }
 
     public function testFlushByTagDelegatesBanTag(): void
@@ -68,8 +71,8 @@ final class FastlyBackendTest extends UnitTestCase
         $backend = $this->createBackend();
         $backend->flushByTag('my-tag');
 
-        self::assertCount(1, $this->requestHistory);
-        self::assertStringContainsString('my-tag', (string) $this->requestHistory[0]['request']->getUri());
+        $this->assertCount(1, $this->requestHistory);
+        $this->assertStringContainsString('my-tag', (string) $this->requestHistory[0]['request']->getUri());
     }
 
     public function testFlushByTagsCallsBanTagForEachTag(): void
@@ -77,14 +80,14 @@ final class FastlyBackendTest extends UnitTestCase
         $backend = $this->createBackend();
         $backend->flushByTags(['alpha', 'beta', 'gamma']);
 
-        self::assertCount(3, $this->requestHistory);
+        $this->assertCount(3, $this->requestHistory);
         $uris = array_map(
             static fn (array $e): string => (string) $e['request']->getUri(),
             $this->requestHistory,
         );
-        self::assertStringContainsString('alpha', implode(' ', $uris));
-        self::assertStringContainsString('beta', implode(' ', $uris));
-        self::assertStringContainsString('gamma', implode(' ', $uris));
+        $this->assertStringContainsString('alpha', implode(' ', $uris));
+        $this->assertStringContainsString('beta', implode(' ', $uris));
+        $this->assertStringContainsString('gamma', implode(' ', $uris));
     }
 
     public function testFlushByTagsWithEmptyArrayMakesNoRequests(): void
@@ -92,6 +95,6 @@ final class FastlyBackendTest extends UnitTestCase
         $backend = $this->createBackend(0);
         $backend->flushByTags([]);
 
-        self::assertCount(0, $this->requestHistory);
+        $this->assertCount(0, $this->requestHistory);
     }
 }

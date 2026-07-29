@@ -26,7 +26,7 @@ final class RetryMiddlewareTest extends UnitTestCase
 
     public function testRetryReturnsCallable(): void
     {
-        self::assertIsCallable(RetryMiddleware::retry([]));
+        $this->assertIsCallable(RetryMiddleware::retry([]));
     }
 
     public function testDoesNotRetryAfterMaxAttempts(): void
@@ -45,7 +45,7 @@ final class RetryMiddlewareTest extends UnitTestCase
 
         // retries=0→500→retry, retries=1→500→retry, retries=2→500→retry,
         // retries=3 >= 3 → stop → returns last 500. One 200 response remains unused.
-        self::assertSame(1, $mock->count(), 'One response should remain unused after 3 retries');
+        $this->assertCount(1, $mock, 'One response should remain unused after 3 retries');
     }
 
     public function testRetriesOnConnectException(): void
@@ -59,8 +59,8 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock);
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(0, $mock->count());
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(0, $mock);
     }
 
     public function testRetriesOn500Response(): void
@@ -69,8 +69,8 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock);
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(0, $mock->count());
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(0, $mock);
     }
 
     public function testRetriesOn503Response(): void
@@ -79,8 +79,8 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock);
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(0, $mock->count());
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(0, $mock);
     }
 
     public function testDoesNotRetryOn404(): void
@@ -89,8 +89,8 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock);
         $response = $client->get('http://example.com');
 
-        self::assertSame(404, $response->getStatusCode());
-        self::assertSame(0, $mock->count());
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertCount(0, $mock);
     }
 
     public function testDoesNotRetryOn200(): void
@@ -99,8 +99,8 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock);
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(0, $mock->count());
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(0, $mock);
     }
 
     public function testCustomMaxAttemptIsRespected(): void
@@ -110,7 +110,7 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock, ['max_attempt' => 0]);
         $client->get('http://example.com');
 
-        self::assertSame(1, $mock->count(), 'Second response must remain unused with max_attempt=0 (no retries)');
+        $this->assertCount(1, $mock, 'Second response must remain unused with max_attempt=0 (no retries)');
     }
 
     public function testDefaultSecBeforeAttemptIsUsedWhenAbsent(): void
@@ -119,7 +119,7 @@ final class RetryMiddlewareTest extends UnitTestCase
         // We override with sec_before_attempt=0 in helper; here we test the formula via direct config
         // Test that omitting the key still produces a callable (no error)
         $callable = RetryMiddleware::retry([]);
-        self::assertIsCallable($callable);
+        $this->assertIsCallable($callable);
     }
 
     public function testDefaultDelayIsAppliedWhenSecBeforeAttemptNotConfigured(): void
@@ -130,12 +130,13 @@ final class RetryMiddlewareTest extends UnitTestCase
         $mock = new MockHandler([new Response(500), new Response(200)]);
         $stack = HandlerStack::create($mock);
         $stack->push(RetryMiddleware::retry(['max_attempt' => 1]));
+
         $client = new Client(['handler' => $stack, 'http_errors' => false]);
 
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertSame(0, $mock->count(), 'Both responses must have been consumed after one retry');
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(0, $mock, 'Both responses must have been consumed after one retry');
     }
 
     public function testCustomSecBeforeAttemptIsRespected(): void
@@ -145,6 +146,6 @@ final class RetryMiddlewareTest extends UnitTestCase
         $client = $this->makeClient($mock, ['sec_before_attempt' => 0]);
         $response = $client->get('http://example.com');
 
-        self::assertSame(200, $response->getStatusCode());
+        $this->assertSame(200, $response->getStatusCode());
     }
 }
