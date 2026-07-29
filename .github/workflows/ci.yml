@@ -1,0 +1,102 @@
+name: Test TYPO3 Extension
+
+# Make sure only one build is running per branch at a time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-26.04
+    name: 'v${{ matrix.typo3-version }} tests on PHP ${{ matrix.php-version }}'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - typo3-version: "13.4"
+            php-version: "8.3"
+          - typo3-version: "13.4"
+            php-version: "8.4"
+          - typo3-version: "13.4"
+            php-version: "8.5"
+          - typo3-version: "14.3"
+            php-version: "8.3"
+          - typo3-version: "14.3"
+            php-version: "8.4"
+          - typo3-version: "14.3"
+            php-version: "8.5"
+
+    steps:
+      - name: 'Checkout code'
+        uses: actions/checkout@v7
+
+      - name: 'Setup PHP'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer
+          coverage: 'xdebug3'
+          extensions: pdo, sqlite3
+
+      - name: 'Get Composer Cache Directory'
+        id: composer-cache
+        shell: bash
+        run: |
+          echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: 'Cache Composer Dependencies'
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: "php-${{ matrix.php-version }}-typo3-${{ matrix.typo3-version }}-composer-${{ hashFiles('**/composer.json') }}"
+          restore-keys: "php-${{ matrix.php-version }}-typo3-${{ matrix.typo3-version }}-composer-\n"
+
+      - name: 'Install Composer Dependencies'
+        shell: bash
+        run: composer config --unset platform.php && composer require --no-ansi --no-interaction --no-progress --no-install typo3/minimal:"^${{ matrix.typo3-version }}" && composer update --no-progress --no-interaction && composer show
+
+      - name: 'PHPUnit unit tests'
+        shell: bash
+        run: composer test:unit
+
+      - name: 'PHPUnit functional tests'
+        shell: bash
+        run: composer test:functional
+
+      - name: 'Merge Coverage Reports'
+        shell: bash
+        run: .Build/bin/phpcov merge --html .Build/artifacts/coverage/merged --clover .Build/artifacts/coverage/clover.xml .Build/artifacts/coverage/
+
+      - name: 'Generate code coverage summary report'
+        uses: saschanowak/CloverCodeCoverageSummary@1.1.1
+        with:
+          filename: .Build/artifacts/coverage/clover.xml
+
+      - name: 'Add code coverage summary as action run comment'
+        run: |
+          cat code-coverage-summary.md >> $GITHUB_STEP_SUMMARY
+          cat code-coverage-details.md >> $GITHUB_STEP_SUMMARY
+
+      - name: 'Add title to code coverage summary'
+        shell: bash
+        run: sed -i '1 i\## TYPO3 v${{ matrix.typo3-version }} tests on PHP ${{ matrix.php-version }}' code-coverage-summary.md
+
+      - name: 'Add code coverage summary as pr comment'
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: coverage-${{ matrix.php-version }}
+          recreate: true
+          path: code-coverage-summary.md

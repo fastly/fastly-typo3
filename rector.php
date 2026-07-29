@@ -26,7 +26,7 @@ return RectorConfig::configure()
     )
     ->withImportNames(removeUnusedImports: true)
     ->withSets([
-        LevelSetList::UP_TO_PHP_84,
+        LevelSetList::UP_TO_PHP_83,
         SetList::CODE_QUALITY,
         SetList::CODING_STYLE,
         SetList::DEAD_CODE,
