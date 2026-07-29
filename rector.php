@@ -6,6 +6,7 @@ use Rector\Config\RectorConfig;
 use Rector\PHPUnit\Set\PHPUnitSetList;
 use Rector\Set\ValueObject\LevelSetList;
 use Rector\Set\ValueObject\SetList;
+use Rector\TypeDeclaration\Rector\ClassMethod\AddReturnTypeDeclarationBasedOnParentClassMethodRector;
 use Rector\TypeDeclaration\Rector\StmtsAwareInterface\DeclareStrictTypesRector;
 use Ssch\TYPO3Rector\CodeQuality\General\ConvertImplicitVariablesToExplicitGlobalsRector;
 use Ssch\TYPO3Rector\Configuration\Typo3Option;
@@ -50,4 +51,7 @@ return RectorConfig::configure()
         __DIR__ . '/public/*',
         __DIR__ . '/.github/*',
         __DIR__ . '/.Build/*',
+        AddReturnTypeDeclarationBasedOnParentClassMethodRector::class => [
+            __DIR__ . '/Classes/Cache/Backend/V13/FastlyBackend.php'
+        ],
     ]);
