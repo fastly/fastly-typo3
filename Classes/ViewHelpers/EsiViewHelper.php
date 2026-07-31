@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Fastly\Cdn\ViewHelpers;
 
 use Closure;
+use Fastly\Cdn\Exception\EsiRenderingException;
 use Override;
 use Psr\Http\Message\ServerRequestInterface;
-use RuntimeException;
 use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\HttpUtility;
@@ -97,7 +97,7 @@ class EsiViewHelper extends AbstractTagBasedViewHelper
             $src = self::renderWithExtbaseContext($request, $this->arguments);
         } elseif ($request instanceof ServerRequestInterface) {
             if (ApplicationType::fromRequest($request)->isBackend()) {
-                throw new RuntimeException(
+                throw new EsiRenderingException(
                     'ViewHelper esi:include is not supported in backend context.',
                     1639819268,
                 );
@@ -106,7 +106,7 @@ class EsiViewHelper extends AbstractTagBasedViewHelper
             // Use the regular typolink functionality.
             $src = self::renderFrontendLinkWithCoreContext($request, $this->arguments, $this->renderChildren(...));
         } else {
-            throw new RuntimeException(
+            throw new EsiRenderingException(
                 'The rendering context of ViewHelper esi:include is missing a valid request object.',
                 1639819269,
             );

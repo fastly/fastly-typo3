@@ -64,6 +64,10 @@ sub vcl_recv {
   # Don't allow clients to force a pass
   if (req.restarts == 0) {
     unset req.http.x-pass;
+    # Prevent clients from forcing ESI processing via a spoofed request header.
+    # ESI is only ever enabled based on beresp.http.Surrogate-Control / X-Esi
+    # from the origin, never from the client-facing request.
+    unset req.http.X-Esi;
   }
 
   # Enable Fastly authentification for single purges
@@ -110,7 +114,7 @@ sub vcl_recv {
   }
 
   # TODO: Validate the cookie value to avoid cache poisoning. For now, we just pass if the cookie is present.
-  if (req.http.cookie:be_typo_user) {
+  if (req.http.cookie:be_typo_user || req.http.cookie:fe_typo_user) {
     set req.http.x-pass = "1";
   }
 

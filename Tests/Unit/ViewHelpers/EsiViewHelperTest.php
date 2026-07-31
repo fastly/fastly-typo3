@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Fastly\Cdn\Tests\Unit\ViewHelpers;
 
+use Fastly\Cdn\Exception\EsiRenderingException;
 use Fastly\Cdn\ViewHelpers\EsiViewHelper;
 use Psr\Http\Message\ServerRequestInterface;
-use RuntimeException;
 use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\RequestInterface as ExtbaseRequestInterface;
@@ -85,7 +85,7 @@ final class EsiViewHelperTest extends UnitTestCase
         $viewHelper = $this->makeViewHelper();
         $viewHelper->setArguments($this->defaultArguments(['src' => null]));
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(EsiRenderingException::class);
         $this->expectExceptionCode(1639819269);
 
         $viewHelper->render();
@@ -103,7 +103,7 @@ final class EsiViewHelperTest extends UnitTestCase
         $viewHelper = $this->makeViewHelper($request);
         $viewHelper->setArguments($this->defaultArguments(['src' => null]));
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(EsiRenderingException::class);
         $this->expectExceptionCode(1639819268);
 
         $viewHelper->render();
@@ -117,7 +117,7 @@ final class EsiViewHelperTest extends UnitTestCase
         // so it will fall through to the request-based path → throw with code 1639819269
         $viewHelper->setArguments($this->defaultArguments(['src' => '']));
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(EsiRenderingException::class);
         $this->expectExceptionCode(1639819269);
 
         $viewHelper->render();

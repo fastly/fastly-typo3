@@ -17,7 +17,7 @@ so Fastly can purge by Surrogate Key.
 - **PHP namespace:** `Fastly\Cdn\`
 - **Supported TYPO3 versions:** `^13.4 || ^14.3`
 - **Minimum PHP:** `^8.3` (TYPO3 v14 raises this to `^8.3`)
-- **License:** GPL-2.0-or-later
+- **License:** MIT
 - **Maintainer:** Sascha Nowak `<sascha.nowak@fastly.com>` (Fastly Inc.)
 
 ## Architecture overview
@@ -32,7 +32,7 @@ Fastly IO endpoint. The processor only constructs URLs and appends IO
 parameters — the actual transformation happens on the Fastly edge.
 
 Key rules:
-- URLs are prefixed with `/_image/` (the Fastly service routes this path to IO).
+- URLs are prefixed with `/_images/` (the Fastly service routes this path to IO).
 - Storage agnostic: works with local and remote FAL storages (S3, etc.) because
   we never touch the binary — we only produce URLs.
 - Map as many TYPO3 processing instructions as possible to IO query parameters
@@ -68,7 +68,7 @@ emits too many tags on a single response, the middleware must shorten them
 
 A Symfony Console command provisions the VCL snippets the extension relies on
 and validates the Fastly service configuration (correct conditions, backends,
-header logic for `Surrogate-Key`, IO setup, `_image/` path rules). The command
+header logic for `Surrogate-Key`, IO setup, `_images/` path rules). The command
 must be idempotent: running it twice on a clean service should not produce
 diffs.
 
@@ -212,7 +212,7 @@ Hard rules. If a task seems to require breaking one of these, stop and ask.
 2. **No `GeneralUtility::makeInstance()` for our services.** Always wire
    through the constructor via `Configuration/Services.yaml`.
 3. **No BC breaks without a deprecation path.** See the Public API section.
-4. **Do not change the `_image/` URL prefix** without coordinating — the VCL
+4. **Do not change the `_images/` URL prefix** without coordinating — the VCL
    snippets and the FAL processor agree on this string.
 5. **Do not introduce per-site configuration.** A single global service is a
    product decision.

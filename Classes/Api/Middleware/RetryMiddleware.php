@@ -36,7 +36,23 @@ final class RetryMiddleware
                 // Retry on server errors
                 return $response instanceof Response && $response->getStatusCode() >= 500;
             },
-            function ($numberOfRetries) use ($config): int|float {
+            function (
+                $numberOfRetries,
+                RequestInterface $request,
+                ?Response $response = null,
+            ) use ($config): int|float {
+                if ($response instanceof Response && $response->hasHeader('Retry-After')) {
+                    $retryAfter = $response->getHeaderLine('Retry-After');
+                    if (is_numeric($retryAfter)) {
+                        return ((float) $retryAfter) * 1000;
+                    }
+
+                    $retryAfterTimestamp = strtotime($retryAfter);
+                    if ($retryAfterTimestamp !== false) {
+                        return max(0, $retryAfterTimestamp - time()) * 1000;
+                    }
+                }
+
                 $config = array_key_exists('sec_before_attempt', $config)
                     ? $config
                     : ['sec_before_attempt' => 0.5];
