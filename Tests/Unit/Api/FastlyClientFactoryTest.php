@@ -79,22 +79,16 @@ final class FastlyClientFactoryTest extends UnitTestCase
         $this->assertSame('application/json', $config['headers']['Accept'] ?? null);
     }
 
-    public function testVerifyStringTrueIsCastToBoolean(): void
+    public function testVerifyIsAlwaysTrueRegardlessOfConfiguredValue(): void
     {
-        $GLOBALS['TYPO3_CONF_VARS']['HTTP']['verify'] = 'true';
-        $client = FastlyClientFactory::getClient();
-        $config = $this->getClientConfig($client);
-
-        $this->assertTrue($config['verify']);
-    }
-
-    public function testVerifyStringFalseIsCastToBoolean(): void
-    {
+        // TLS certificate verification against the Fastly API is intentionally not
+        // configurable — 'verify' is always forced to true, even if TYPO3's HTTP
+        // configuration says otherwise.
         $GLOBALS['TYPO3_CONF_VARS']['HTTP']['verify'] = 'false';
         $client = FastlyClientFactory::getClient();
         $config = $this->getClientConfig($client);
 
-        $this->assertFalse($config['verify']);
+        $this->assertTrue($config['verify']);
     }
 
     public function testHandlerStackIsCreatedWhenHandlerArrayIsConfigured(): void
