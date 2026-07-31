@@ -10,7 +10,7 @@ use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\ProcessedFile;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class ProcessedFileRepository extends \TYPO3\CMS\Core\Resource\ProcessedFileRepository
+readonly class ProcessedFileRepository extends \TYPO3\CMS\Core\Resource\ProcessedFileRepository
 {
     #[Override]
     public function findOneByOriginalFileAndTaskTypeAndConfiguration(File $file, string $taskType, array $configuration): ProcessedFile
