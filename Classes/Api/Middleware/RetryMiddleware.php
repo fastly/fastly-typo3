@@ -38,8 +38,8 @@ final class RetryMiddleware
             },
             function (
                 $numberOfRetries,
-                RequestInterface $request,
                 ?Response $response = null,
+                ?RequestInterface $request = null,
             ) use ($config): int|float {
                 if ($response instanceof Response && $response->hasHeader('Retry-After')) {
                     $retryAfter = $response->getHeaderLine('Retry-After');
