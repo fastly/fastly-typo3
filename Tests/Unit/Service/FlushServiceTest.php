@@ -7,6 +7,7 @@ namespace Fastly\Cdn\Tests\Unit\Service;
 use Iterator;
 use Fastly\Cdn\Api\FastlyClient;
 use Fastly\Cdn\Service\FlushService;
+use Fastly\Cdn\Service\SurrogateKeyHasher;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -31,6 +32,7 @@ final class FlushServiceTest extends UnitTestCase
             $this->createStub(FrontendInterface::class),
             'API_TOKEN_PLACEHOLDER',
             'SERVICE_ID_PLACEHOLDER',
+            new SurrogateKeyHasher(),
         );
     }
 
@@ -184,13 +186,14 @@ final class FlushServiceTest extends UnitTestCase
             $this->createStub(FrontendInterface::class),
             'API_TOKEN_PLACEHOLDER',
             'SERVICE_ID_PLACEHOLDER',
+            new SurrogateKeyHasher(),
         );
 
         $service = new FlushService($client, $this->createLogger(), true);
         $service->purgeTags(['tag-1', 'tag-2', 'tag-3']);
 
         $this->assertCount(3, $history, 'below the bulk threshold each tag purges as its own request');
-        $this->assertStringContainsString('tag-2', (string) $history[1]['request']->getUri());
+        $this->assertStringContainsString('tag-2', (string) $history[1]['request']->getHeaderLine('surrogate-key'));
     }
 
     public function testPurgeTagsUsesSingleBulkRequestForTenOrMoreTags(): void
@@ -205,15 +208,21 @@ final class FlushServiceTest extends UnitTestCase
             $this->createStub(FrontendInterface::class),
             'API_TOKEN_PLACEHOLDER',
             'SERVICE_ID_PLACEHOLDER',
+            new SurrogateKeyHasher(),
         );
 
         $service = new FlushService($client, $this->createLogger(), true);
-        $service->purgeTags($this->tags(10));
+        $tags = $this->tags(10);
+        $service->purgeTags($tags);
 
         $this->assertCount(1, $history, 'ten or more tags must purge as one bulk request');
         $request = $history[0]['request'];
+        $hasher = new SurrogateKeyHasher();
         $this->assertSame('/service/SERVICE_ID_PLACEHOLDER/purge', $request->getUri()->getPath());
-        $this->assertSame(implode(' ', $this->tags(10)), $request->getHeaderLine('surrogate-key'));
+        $this->assertSame(
+            implode(' ', [...$tags, ...array_map($hasher->hash(...), $tags)]),
+            $request->getHeaderLine('surrogate-key'),
+        );
     }
 
     public function testPurgeTagsLogsErrorWhenBulkPurgeFails(): void

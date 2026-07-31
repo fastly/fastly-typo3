@@ -13,6 +13,7 @@ use Fastly\Api\ProductNgwafApi;
 use Fastly\Api\ServiceApi;
 use Fastly\Api\VclApi;
 use Fastly\Api\VersionApi;
+use Fastly\Cdn\Service\SurrogateKeyHasher;
 use Fastly\Configuration;
 use Fastly\Model\DomainResponse;
 use Fastly\Model\InlineObject;
@@ -61,6 +62,7 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
         private string $apiToken,
         #[Autowire(expression: 'service("extension-configuration").get("fastly", "serviceId")')]
         private string $serviceId,
+        private SurrogateKeyHasher $hasher,
     ) {
         $config = Configuration::getDefaultConfiguration()->setApiToken($this->apiToken);
         $this->serviceApi = new ServiceApi($this->client, $config);
@@ -254,16 +256,25 @@ final readonly class FastlyClient implements FastlyClientInterface, SingletonInt
 
     public function purgeByTag(string $tag): void
     {
-        $this->purgeApi->purgeTag(
-            ['service_id' => $this->serviceId, 'surrogate_key' => strtolower($tag)]
-        );
+        $this->purgeByTags([$tag]);
     }
 
+    /**
+     * Purges both the plaintext tag and its short hash in the same request.
+     * The middleware emits plaintext Surrogate-Keys by default, but falls
+     * back to hashed keys once the header-size guard kicks in — since a
+     * purge call has no way of knowing which form a given cached response
+     * used, it must send both to reliably hit the object.
+     */
     public function purgeByTags(array $tags): void
     {
-        $this->purgeApi->bulkPurgeTag(
-            ['service_id' => $this->serviceId, 'surrogate_key' => strtolower(implode(' ', $tags))]
-        );
+        $plaintextKeys = array_map(strtolower(...), $tags);
+        $hashedKeys = array_map($this->hasher->hash(...), $tags);
+
+        $this->purgeApi->bulkPurgeTag([
+            'service_id' => $this->serviceId,
+            'surrogate_key' => implode(' ', [...$plaintextKeys, ...$hashedKeys]),
+        ]);
     }
 
     public function purgeAll(): void

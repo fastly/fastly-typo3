@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fastly\Cdn\Tests\Unit\Api;
 
 use Fastly\Cdn\Api\FastlyClient;
+use Fastly\Cdn\Service\SurrogateKeyHasher;
 use Fastly\Model\DomainResponse;
 use Fastly\Model\ServiceResponse;
 use Fastly\Model\VclResponse;
@@ -21,7 +22,7 @@ use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
 final class FastlyClientTest extends UnitTestCase
 {
-    public function testPurgeByTagSendsRequestWithCorrectSurrogateKey(): void
+    public function testPurgeByTagSendsBothPlaintextAndHashedSurrogateKey(): void
     {
         $history = [];
         $client = $this->buildClientWithHistory($history);
@@ -29,7 +30,10 @@ final class FastlyClientTest extends UnitTestCase
 
         $this->assertCount(1, $history);
         $request = $history[0]['request'];
-        $this->assertStringContainsString('my-cache-tag', (string) $request->getUri());
+        $this->assertSame(
+            'my-cache-tag ' . (new SurrogateKeyHasher())->hash('my-cache-tag'),
+            $request->getHeaderLine('surrogate-key'),
+        );
     }
 
     private function buildClientWithHistory(array &$container): FastlyClient
@@ -50,7 +54,13 @@ final class FastlyClientTest extends UnitTestCase
 
         $guzzle = new Client(['handler' => $stack]);
 
-        return new FastlyClient($guzzle, $this->createStub(FrontendInterface::class), 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER');
+        return new FastlyClient(
+            $guzzle,
+            $this->createStub(FrontendInterface::class),
+            'API_TOKEN_PLACEHOLDER',
+            'SVC_ID_PLACEHOLDER',
+            new SurrogateKeyHasher(),
+        );
     }
 
     public function testCreateCustomVclPostsNameContentAndMainFlag(): void
@@ -169,17 +179,21 @@ final class FastlyClientTest extends UnitTestCase
         $this->assertCount(0, $history);
     }
 
-    public function testPurgeByTagsSendsSpaceJoinedLowercasedSurrogateKeyHeader(): void
+    public function testPurgeByTagsSendsPlaintextAndHashedKeysForEachTag(): void
     {
         $history = [];
         $client = $this->clientFromMock(new MockHandler([new Response(200, [], '{"status":"ok"}')]), $history);
+        $hasher = new SurrogateKeyHasher();
 
         $client->purgeByTags(['Tag-One', 'tag-two']);
 
         $request = $history[0]['request'];
         $this->assertSame('POST', $request->getMethod());
         $this->assertSame('/service/SVC_ID_PLACEHOLDER/purge', $request->getUri()->getPath());
-        $this->assertSame('tag-one tag-two', $request->getHeaderLine('surrogate-key'));
+        $this->assertSame(
+            sprintf('tag-one tag-two %s %s', $hasher->hash('Tag-One'), $hasher->hash('tag-two')),
+            $request->getHeaderLine('surrogate-key'),
+        );
     }
 
     public function testCreateServicePostsNameCommentAndVclType(): void
@@ -255,7 +269,7 @@ final class FastlyClientTest extends UnitTestCase
         $cache->method('get')->willReturnCallback(static function (string $id) use (&$store): mixed {
             return $store[$id];
         });
-        $client = new FastlyClient(new Client(['handler' => $stack]), $cache, 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER');
+        $client = new FastlyClient(new Client(['handler' => $stack]), $cache, 'API_TOKEN_PLACEHOLDER', 'SVC_ID_PLACEHOLDER', new SurrogateKeyHasher());
 
         $first = $client->listServiceVersions('svc');
         $second = $client->listServiceVersions('svc');

@@ -7,6 +7,7 @@ namespace Fastly\Cdn\Tests\Unit\Cache\Backend;
 use Fastly\Cdn\Api\FastlyClient;
 use Fastly\Cdn\Cache\Backend\FastlyBackend;
 use Fastly\Cdn\Service\FlushService;
+use Fastly\Cdn\Service\SurrogateKeyHasher;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -45,6 +46,7 @@ final class FastlyBackendTest extends UnitTestCase
             $this->createStub(FrontendInterface::class),
             'API_TOKEN_PLACEHOLDER',
             'SVC_ID_PLACEHOLDER',
+            new SurrogateKeyHasher(),
         );
         $flushService = new FlushService(
             $fastlyClient,
@@ -75,7 +77,10 @@ final class FastlyBackendTest extends UnitTestCase
         $backend->flushByTag('my-tag');
 
         $this->assertCount(1, $this->requestHistory);
-        $this->assertStringContainsString('my-tag', (string) $this->requestHistory[0]['request']->getUri());
+        $this->assertStringContainsString(
+            'my-tag',
+            (string) $this->requestHistory[0]['request']->getHeaderLine('surrogate-key'),
+        );
     }
 
     public function testFlushByTagsCallsBanTagForEachTag(): void
@@ -85,13 +90,13 @@ final class FastlyBackendTest extends UnitTestCase
         $backend->flushByTags(['alpha', 'beta', 'gamma']);
 
         $this->assertCount(3, $this->requestHistory);
-        $uris = array_map(
-            static fn (array $e): string => (string) $e['request']->getUri(),
+        $surrogateKeys = array_map(
+            static fn (array $e): string => $e['request']->getHeaderLine('surrogate-key'),
             $this->requestHistory,
         );
-        $this->assertStringContainsString('alpha', implode(' ', $uris));
-        $this->assertStringContainsString('beta', implode(' ', $uris));
-        $this->assertStringContainsString('gamma', implode(' ', $uris));
+        $this->assertStringContainsString('alpha', implode(' ', $surrogateKeys));
+        $this->assertStringContainsString('beta', implode(' ', $surrogateKeys));
+        $this->assertStringContainsString('gamma', implode(' ', $surrogateKeys));
     }
 
     public function testFlushByTagsWithEmptyArrayMakesNoRequests(): void

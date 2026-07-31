@@ -23,6 +23,27 @@ is what lets Fastly purge by tag: when a page, file, site or language
 changes, TYPO3 flushes the corresponding cache tags, and the mechanism below
 translates that into a targeted Fastly purge.
 
+..  _surrogate-keys-header-size-guard:
+
+Header-size guard
+------------------
+
+Fastly's response header budget is roughly 16 KB. Pages that reference an
+unusually large number of records (e.g. listing pages with hundreds of rows)
+could otherwise produce a ``Surrogate-Key`` header that exceeds this budget
+and gets silently dropped, leaving the response cached without any way to
+purge it by tag.
+
+To guard against this, the middleware measures the joined tag string before
+setting the header. Below roughly 12 KB, tags are emitted as plain text as
+described above. Above that threshold, every tag is replaced with a short,
+deterministic hash instead, keeping the header safely within budget.
+
+Because a purge call has no way of knowing which form a given cached
+response used, every purge (see below) sends both the plaintext tag and its
+hash, so purging works regardless of which form was in effect when the page
+was cached.
+
 ..  _surrogate-keys-flushing:
 
 Cache flushing and purging
