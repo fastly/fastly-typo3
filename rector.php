@@ -52,6 +52,7 @@ return RectorConfig::configure()
         __DIR__ . '/.github/*',
         __DIR__ . '/.Build/*',
         AddReturnTypeDeclarationBasedOnParentClassMethodRector::class => [
-            __DIR__ . '/Classes/Cache/Backend/V13/FastlyBackend.php'
+            __DIR__ . '/Classes/Cache/Backend/V13/FastlyBackend.php',
+            __DIR__ . '/Classes/Resource/V13/ProcessedFileRepository.php'
         ],
     ]);

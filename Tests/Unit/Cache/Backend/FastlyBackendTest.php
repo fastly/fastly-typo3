@@ -108,7 +108,7 @@ final class FastlyBackendTest extends UnitTestCase
         $this->assertCount(0, $this->requestHistory);
     }
 
-    private function skipTestIfOldVersion()
+    private function skipTestIfOldVersion(): void
     {
         if ((new Typo3Version())->getMajorVersion() < 14) {
             self::markTestSkipped();
