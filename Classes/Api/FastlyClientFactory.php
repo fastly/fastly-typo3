@@ -14,7 +14,13 @@ final class FastlyClientFactory
 {
     public static function getClient(): ClientInterface
     {
-        $config = array_merge($GLOBALS['TYPO3_CONF_VARS']['HTTP'], [
+        $httpConfig = $GLOBALS['TYPO3_CONF_VARS']['HTTP'];
+        $verify = $httpConfig['verify'] ?? true;
+        if (is_string($verify)) {
+            $verify = filter_var($verify, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $config = array_merge($httpConfig, [
             'base_uri' => 'https://api.fastly.com',
             'timeout' => 8,
             'connect_timeout' => 5,
@@ -23,7 +29,7 @@ final class FastlyClientFactory
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ],
-            'verify' => true,
+            'verify' => $verify,
         ]);
 
         if (
