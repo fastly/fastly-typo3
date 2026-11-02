@@ -26,7 +26,7 @@
     "require-dev": {
         "ext-sqlite3": "*",
         "ergebnis/composer-normalize": "^2.51",
-        "phpunit/phpcov": "^11.0",
+        "phpunit/phpcov": "^13.2",
         "ssch/typo3-rector": "^3.14",
         "typo3/testing-framework": "^9.5"
     },
